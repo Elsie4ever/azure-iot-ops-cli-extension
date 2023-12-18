@@ -108,6 +108,9 @@ class ResourceTypeMapping(Enum):
     custom_location = "Microsoft.ExtendedLocation/customLocations"
     connected_cluster = "Microsoft.Kubernetes/connectedClusters"
     cluster_extensions = "Microsoft.KubernetesConfiguration/extensions"
+    dataset = "Microsoft.IoTOperationsDataProcessor/datasets"
+    instance = "Microsoft.IoTOperationsDataProcessor/instances"
+    pipeline = "Microsoft.IoTOperationsDataProcessor/pipelines"
 
 
 class ClusterExtensionsMapping(Enum):
@@ -116,6 +119,7 @@ class ClusterExtensionsMapping(Enum):
     """
 
     asset = "microsoft.deviceregistry.assets"
+    dataprocessor = "microsoft.iotoperations.dataprocessor"
 
 
 class AEPAuthModes(Enum):
