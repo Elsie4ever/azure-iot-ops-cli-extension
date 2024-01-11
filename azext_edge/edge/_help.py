@@ -88,6 +88,7 @@ def load_iotops_help():
             - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
             - {COMPAT_LNM_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
+            - {COMPAT_AKRI_APIS.as_str()}
 
         examples:
         - name: Basic usage. Checks `mq` health with summary output.
@@ -281,22 +282,6 @@ def load_iotops_help():
             --documentation-uri www.help.com --external-asset-id 000-000-0000 --hardware-revision 10.0
             --product-code XXX100 --software-revision 0.1 --manufacturer Contoso
             --manufacturer-uri constoso.com --model AssetModel --serial-number 000-000-ABC10
-    """
-
-    helps[
-        "iot ops asset list"
-    ] = """
-        type: command
-        short-summary: List assets.
-
-        examples:
-        - name: List all assets in the current subscription.
-          text: >
-            az iot ops asset list
-
-        - name: List all assets in a resource group.
-          text: >
-            az iot ops asset list -g {resource_group}
     """
 
     helps[
