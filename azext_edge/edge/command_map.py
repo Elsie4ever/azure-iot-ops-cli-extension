@@ -13,6 +13,8 @@ mq_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_mq#{}
 edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edge#{}")
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 aep_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_asset_endpoint_profiles#{}")
+dataset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_datasets#{}")
+instance_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_instances#{}")
 
 
 def load_iotops_commands(self, _):
@@ -83,3 +85,21 @@ def load_iotops_commands(self, _):
         cmd_group.command("add", "add_asset_endpoint_profile_transport_auth")
         cmd_group.command("list", "list_asset_endpoint_profile_transport_auth")
         cmd_group.command("remove", "remove_asset_endpoint_profile_transport_auth")
+
+    with self.command_group(
+        "iot ops dataprocessor dataset",
+        command_type=dataset_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("create", "create_dataset")
+        cmd_group.command("show", "show_dataset")
+        cmd_group.command("list", "list_datasets")
+        cmd_group.command("delete", "delete_dataset")
+        cmd_group.command("query", "query_datasets")
+    
+    with self.command_group(
+        "iot ops dataprocessor instance",
+        command_type=instance_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("list", "list_instances")
+        cmd_group.command("show", "show_instance")
+        cmd_group.command("query", "query_instances")

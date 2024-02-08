@@ -97,11 +97,12 @@ class RPSaaSBaseProvider:
         resource_name: str,
         resource_group_name: str,
         check_cluster_connectivity: bool = False,
+        parent_resource_path: Optional[str] = "",
     ) -> Dict[str, Any]:
         result = self.resource_client.resources.get(
             resource_group_name=resource_group_name,
             resource_provider_namespace="",
-            parent_resource_path="",
+            parent_resource_path=parent_resource_path,
             resource_type=self.resource_type,
             resource_name=resource_name,
             api_version=self.api_version

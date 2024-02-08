@@ -866,3 +866,75 @@ def load_iotops_arguments(self, _):
             options_list=["--thumbprint", "-t"],
             help="Certificate thumbprint.",
         )
+    
+    with self.argument_context("iot ops dataprocessor dataset") as context:
+        context.argument(
+            "dataset_name",
+            options_list=["--name", "-n"],
+            help="Dataset name.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="Instance name.",
+        )
+        context.argument(
+            "resource_group_name",
+            options_list=["--resource-group", "--rg"],
+            help="Resource group name.",
+        )
+        context.argument(
+            "description",
+            options_list=["--description", "-d"],
+            help="Description.",
+        )
+        context.argument(
+            "payload",
+            options_list=["--payload", "-p"],
+            help="Payload.",
+        )
+        context.argument(
+            "cluster_name",
+            options_list=["--cluster", "-c"],
+            help="Cluster to associate the dataset with.",
+        )
+        context.argument(
+            "cluster_resource_group",
+            options_list=["--cluster-resource-group", "--crg"],
+            help="Resource group for cluster.",
+        )
+        context.argument(
+            "cluster_subscription",
+            options_list=["--cluster-subscription", "--cs"],
+            help="Subscription Id for cluster.",
+        )
+        context.argument(
+            "custom_location_name",
+            options_list=["--custom-location", "--cl"],
+            help="Custom location used to associate dataset with cluster.",
+        )
+        context.argument(
+            "custom_location_resource_group",
+            options_list=["--custom-location-resource-group", "--clrg"],
+            help="Resource group for custom location.",
+        )
+        context.argument(
+            "custom_location_subscription",
+            options_list=["--custom-location-subscription", "--cls"],
+            help="Subscription Id for custom location.",
+        )
+        context.argument(
+            "timestamp",
+            options_list=["--timestamp", "--ts"],
+            help="Timestamp.",
+        )
+        context.argument(
+            "ttl",
+            options_list=["--ttl"],
+            help="TTL.",
+        )
+        context.argument(
+            "keys",
+            options_list=["--keys"],
+            help="Keys.",
+        )
