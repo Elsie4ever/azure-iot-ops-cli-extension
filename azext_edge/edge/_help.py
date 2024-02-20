@@ -687,3 +687,115 @@ def load_iotops_help():
             az iot ops asset endpoint certificate remove --endpoint {asset_endpoint} -g {resource_group}
             --thumbprint {thumbprint}
     """
+
+    helps[
+        "iot ops dataprocessor instance list"
+    ] = """
+        type: command
+        short-summary: List all data processor instances.
+        examples:
+        - name: List all data processor instances by resource group.
+          text: >
+            az iot ops dataprocessor instance list --resource-group {resource_group}
+    """
+
+    helps[
+        "iot ops dataprocessor instance query"
+    ] = """
+        type: command
+        short-summary: Query the Resource Graph for data processor instances.
+        examples:
+        - name: Query for data processor instances with given properties.
+          text: >
+            az iot ops dataprocessor instance query az iot ops dataprocessor instance query
+              --resource-group jiacju_rg
+              --custom-location "/subscriptions/2bd4119a-4d8d-4090-9183-f9e516c21723/resourceGroups/jiacju_rg/providers/Microsoft.ExtendedLocation/customLocations/initbash2-aio-init-cl"
+              --location "westus"
+              --name "testthisname"
+              --description "description"
+    """
+
+    helps[
+        "iot ops dataprocessor instance show"
+    ] = """
+        type: command
+        short-summary: Show a data processor instance.
+        examples:
+        - name: Show the details of a data processor instance.
+          text: >
+            az iot ops dataprocessor instance show --name {dataprocessor_instance} --resource-group {resource_group}
+    """
+
+    helps[
+        "iot ops dataprocessor dataset create"
+    ] = """
+        type: command
+        short-summary: Create a dataset.
+        examples:
+        - name: Create a dataset with the given name, data processor instance name and resource group.
+          text: >
+            az iot ops dataprocessor dataset create --name {dataset_name} --instance {dataprocessor_instance} --resource-group {resource_group}
+
+        - name: Create a dataset with keys map.
+          text: >
+            az iot ops dataprocessor dataset create
+              --instance asset-test7-ops-init-processor
+              --name dataset
+              --resource-group jiacju_rg
+              --custom-location "initbash2-aio-init-cl"
+              --custom-location-resource-group jiacju_rg
+              --cluster cluster
+              --cluster-resource-group jiacju_rg
+              --cluster-subscription "2bd4119a-4d8d-4090-9183-f9e516c21723"
+              --location “westus”
+              --tags “a=b c=d”
+              --description “description”
+              --keys '{\\\"additionalProp1\\\":{\\\"path\\\":\\\".key\\\",\\\"primaryKey\\\": true}}'
+              --payload “.payload”
+              --timestamp “.timestamp”
+              --ttl “20d”
+    """
+
+    helps[
+        "iot ops dataprocessor dataset delete"
+    ] = """
+        type: command
+        short-summary: Delete a dataset.
+        examples:
+        - name: Delete a dataset.
+          text: >
+            az iot ops dataprocessor dataset delete --name {dataset_name} --instance {dataprocessor_instance} --resource-group {resource_group}
+    """
+
+    helps[
+        "iot ops dataprocessor dataset list"
+    ] = """
+        type: command
+        short-summary: List all datasets.
+        examples:
+        - name: List all datasets by resource group.
+          text: >
+            az iot ops dataprocessor dataset list --resource-group {resource_group} --instance {dataprocessor_instance}
+    """
+
+    helps[
+        "iot ops dataprocessor dataset query"
+    ] = """
+        type: command
+        short-summary: Query the Resource Graph for datasets.
+        examples:
+        - name: Query for datasets with given properties.
+          text: >
+            az iot ops dataprocessor dataset query
+              --custom-location 'initbash2-aio-init-cl'
+              --instance 'asset-test7-ops-init-processor'
+              --location 'westus'
+              --name dataset
+              --resource-group jiacju_rg
+              --description “description”
+              --keys '{\\\"additionalProp1\\\":{\\\"path\\\":\\\".key\\\",\\\"primaryKey\\\": true}}'
+              --payload '.payload'
+              --timestamp '.timestamp'
+              --ttl '20d'
+    """
+

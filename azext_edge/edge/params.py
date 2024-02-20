@@ -886,12 +886,14 @@ def load_iotops_arguments(self, _):
         context.argument(
             "description",
             options_list=["--description", "-d"],
-            help="Description.",
+            help="Dataset description.",
+            arg_group="Additional Info",
         )
         context.argument(
             "payload",
             options_list=["--payload", "-p"],
-            help="Payload.",
+            help="Path to the payload in the message. Enrich will add only the payload to the enriched message, other fields will not be kept except for in the indexes.",
+            arg_group="Additional Info",
         )
         context.argument(
             "cluster_name",
@@ -924,17 +926,191 @@ def load_iotops_arguments(self, _):
             help="Subscription Id for custom location.",
         )
         context.argument(
+            "tags",
+            options_list=["--tags"],
+            help="Dataset resource tags. Property bag in key-value pairs with the following format: a=b c=d",
+            arg_type=tags_type,
+        )
+        context.argument(
             "timestamp",
             options_list=["--timestamp", "--ts"],
-            help="Timestamp.",
+            help="Path to an RFC3339, ISO 8601, or unix timestamp. If no path is provided, the ingestion time of the record is used for time-based joins.",
+            arg_group="Additional Info",
         )
         context.argument(
             "ttl",
             options_list=["--ttl"],
-            help="TTL.",
+            help="Time to live.",
+            arg_group="Additional Info",
         )
         context.argument(
             "keys",
             options_list=["--keys"],
-            help="Keys.",
+            help="Map of key names to configurations for keys that can be used for joining on enrich. Key names are restricted to 48 characters or fewer.",
+            arg_group="Additional Info",
+        )
+    
+    with self.argument_context("iot ops dataprocessor instance") as context:
+        context.argument(
+            "custom_location_name",
+            options_list=["--custom-location", "--cl"],
+            help="Custom location used to associate instance with cluster.",
+        )
+        context.argument(
+            "description",
+            options_list=["--description", "-d"],
+            arg_group="Additional Info",
+            help="Instance description.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--name", "-n"],
+            help="Instance name.",
+        )
+        context.argument(
+            "resource_group_name",
+            options_list=["--resource-group", "--rg"],
+            help="Resource group name.",
+        )
+    
+    with self.argument_context("iot ops dataprocessor pipeline") as context:
+        context.argument(
+            "cluster_name",
+            options_list=["--cluster", "-c"],
+            help="Cluster to associate the dataset with.",
+        )
+        context.argument(
+            "cluster_resource_group",
+            options_list=["--cluster-resource-group", "--crg"],
+            help="Resource group for cluster.",
+        )
+        context.argument(
+            "cluster_subscription",
+            options_list=["--cluster-subscription", "--cs"],
+            help="Subscription Id for cluster.",
+        )
+        context.argument(
+            "custom_location_name",
+            options_list=["--custom-location", "--cl"],
+            help="Custom location used to associate dataset with cluster.",
+        )
+        context.argument(
+            "custom_location_resource_group",
+            options_list=["--custom-location-resource-group", "--clrg"],
+            help="Resource group for custom location.",
+        )
+        context.argument(
+            "custom_location_subscription",
+            options_list=["--custom-location-subscription", "--cls"],
+            help="Subscription Id for custom location.",
+        )
+        context.argument(
+            "pipeline_name",
+            options_list=["--name", "-n"],
+            help="Pipeline name.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="Instance name.",
+        )
+        context.argument(
+            "resource_group_name",
+            options_list=["--resource-group", "--rg"],
+            help="Resource group name.",
+        )
+        context.argument(
+            "description",
+            options_list=["--description", "-d"],
+            help="Pipeline description.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "enabled",
+            options_list=["--enabled"],
+            help="Flag indicating whether the pipeline should be running or not.",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "input_stage",
+            nargs="+",
+            options_list=["--input-stage", "--is"],
+            help="Information about where to pull input data from. The input format is key=value. Properties vary by input stage type."
+            "Supported input stage types are: http, influxdb, mqtt and sql"
+            "The following key values are supported by input stage types:"
+            "   http ---- `url`(required), `format`(required), `interval`(required), `partitionCount`(required), `partitionStrategy`(required), `method`, `request`, `authentication`"
+            "   influxdb ---- `query`(required), `url`(required), `interval`(required), `organization`(required), `format`(required), `partitionCount`(required), `partitionStrategy`(required), `authentication`(required), `port`"
+            "   mqtt ---- `broker`(required), `topics`(required), `format`(required), `partitionCount`(required), `partitionStrategy`(required), `qos`, `authentication`"
+            "   sql ---- `query`(required), `server`(required), `database`(required), `interval`(required), `format`(required), `partitionCount`(required), `partitionStrategy`(required), `port`, `authentication`"
+        )
+        context.argument(
+            "output_stage",
+            nargs="+",
+            options_list=["--output-stage", "--os"],
+            help="Information about where to pull output data from.",
+        )
+        context.argument(
+            "processor_stages",
+            options_list=["--processor-stages", "--ps"],
+            help="Information about where to pull input data from. The input format can be json or file path.",
+        )
+        context.argument(
+            "aggregate_processor_stage",
+            nargs="+",
+            options_list=["--aggregate-processor-stage", "--aps"],
+            action="append",
+            help="The aggregate stage provides the ability to accumulate values from messages received over a time window, emitting the aggregated values at the end of each window."
+            "The input format is key=value. Supported properties are:"
+            "`window`(required), `function`(required), `inputPath`(required), `outputPath`(required)",
+            arg_group="Processor Stages"
+        )
+        context.argument(
+            "enrich_processor_stage",
+            nargs="+",
+            options_list=["--enrich-processor-stage", "--eps"],
+            action="append",
+            help="Enrich writes the result of a reference data query into the message."
+            "The input format is key=value. Supported properties are:"
+            "`dataset`(required), `outputPath`(required), `conditions`, `alwaysArray`, `limit`",
+            arg_group="Processor Stages"
+        )
+        context.argument(
+            "filter_processor_stage",
+            nargs="+",
+            options_list=["--filter-processor-stage", "--fps"],
+            action="append",
+            help="Filter Processor Stage.",
+            arg_group="Processor Stages"
+        )
+        context.argument(
+            "grpc_processor_stage",
+            nargs="+",
+            options_list=["--grpc-processor-stage", "--gps"],
+            action="append",
+            help="GRPC Processor Stage.",
+            arg_group="Processor Stages"
+        )
+        context.argument(
+            "http_processor_stage",
+            nargs="+",
+            options_list=["--http-processor-stage", "--hps"],
+            action="append",
+            help="HTTP Processor Stage.",
+            arg_group="Processor Stages"
+        )
+        context.argument(
+            "lkv_processor_stage",
+            nargs="+",
+            options_list=["--lkv-processor-stage", "--lps"],
+            action="append",
+            help="LKV Processor Stage.",
+            arg_group="Processor Stages"
+        )
+        context.argument(
+            "transform_processor_stage",
+            nargs="+",
+            options_list=["--transform-processor-stage", "--tps"],
+            action="append",
+            help="Transform Processor Stage.",
+            arg_group="Processor Stages"
         )

@@ -29,7 +29,7 @@ def create_dataset(
     custom_location_resource_group: Optional[str] = None,
     custom_location_subscription: Optional[str] = None,
     timestamp: Optional[str] = None,
-    ttl: Optional[str] = None,
+    ttl: Optional[str] = "12h",
     keys: Optional[str] = None,
     location: Optional[str] = None,
     tags: Optional[Dict[str, str]] = None,

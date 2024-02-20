@@ -15,6 +15,7 @@ asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_as
 aep_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_asset_endpoint_profiles#{}")
 dataset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_datasets#{}")
 instance_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_instances#{}")
+pipeline_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_pipelines#{}")
 
 
 def load_iotops_commands(self, _):
@@ -103,3 +104,9 @@ def load_iotops_commands(self, _):
         cmd_group.command("list", "list_instances")
         cmd_group.command("show", "show_instance")
         cmd_group.command("query", "query_instances")
+    
+    with self.command_group(
+        "iot ops dataprocessor pipeline",
+        command_type=pipeline_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("create", "create_pipeline")

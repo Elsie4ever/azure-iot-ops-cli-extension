@@ -108,9 +108,10 @@ class ResourceTypeMapping(Enum):
     custom_location = "Microsoft.ExtendedLocation/customLocations"
     connected_cluster = "Microsoft.Kubernetes/connectedClusters"
     cluster_extensions = "Microsoft.KubernetesConfiguration/extensions"
+    # TODO: update dataset resource type
     dataset = "Microsoft.IoTOperationsDataProcessor/datasets"
     instance = "Microsoft.IoTOperationsDataProcessor/instances"
-    pipeline = "Microsoft.IoTOperationsDataProcessor/pipelines"
+    pipeline = "Microsoft.IoTOperationsDataProcessor/instances/pipelines"
 
 
 class ClusterExtensionsMapping(Enum):
@@ -129,6 +130,52 @@ class AEPAuthModes(Enum):
     anonymous = "Anonymous"
     certificate = "Certificate"
     userpass = "UsernamePassword"
+
+
+class DPPipelineStageAuthModes(Enum):
+    """
+    Authentication modes for data processor pipeline mqtt stages
+    """
+    none = "none"
+    usernamePassword = "usernamePassword"
+    serviceAccountToken = "serviceAccountToken"
+
+
+class DPPipelineInputStageTypes(Enum):
+    """
+    Input stage types for data processor pipeline
+    """
+    http = "input/http@v1"
+    influxdb = "input/influxdbv2@v1"
+    mqtt = "input/mqtt@v1"
+    sql = "input/sqlserver@v1"
+
+
+class DPPipelineOutputStageTypes(Enum):
+    """
+    Output stage types for data processor pipeline
+    """
+    blobStorage = "output/blobstorage@v1"
+    dataExplorer = "output/dataexplorer@v1"
+    fabric = "output/fabric@v1"
+    file = "output/file@v1"
+    grpc = "output/grpc@v1"
+    http = "output/http@v1"
+    mqtt = "output/mqtt@v1"
+    referenceData = "output/refdata@v1"
+
+
+class DPPipelineProcessorStageTypes(Enum):
+    """
+    Processor stage types for data processor pipeline
+    """
+    aggregate = "processor/aggregate@v1"
+    enrich = "processor/enrich@v1"
+    filter = "processor/filter@v1"
+    grpc = "processor/grpc@v1"
+    http = "processor/http@v1"
+    lkv = "processor/lkv@v1"
+    transform = "processor/transform@v1"
 
 
 class K8sSecretType(Enum):

@@ -4,12 +4,12 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Dict, List, Optional
+from typing import Optional
 
 from knack.log import get_logger
 from .base import DataProcessorBaseProvider
 from ....util import build_query
-from ....common import ResourceTypeMapping, AEPAuthModes
+from ....common import ResourceTypeMapping
 
 logger = get_logger(__name__)
 
