@@ -799,3 +799,14 @@ def load_iotops_help():
               --ttl '20d'
     """
 
+    helps[
+        "iot ops dataprocessor dataset show"
+    ] = """
+        type: command
+        short-summary: Show a dataset.
+        examples:
+        - name: Show the details of a dataset.
+          text: >
+            az iot ops dataprocessor dataset show --name {dataset_name} --instance {dataprocessor_instance} --resource-group {resource_group}
+    """
+

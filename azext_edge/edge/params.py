@@ -1114,3 +1114,288 @@ def load_iotops_arguments(self, _):
             help="Transform Processor Stage.",
             arg_group="Processor Stages"
         )
+    
+    with self.argument_context("iot ops dp pipeline source add mqtt") as context:
+        context.argument(
+            "broker",
+            options_list=["--broker", "-b"],
+            help="MQTT Broker.",
+        )
+        context.argument(
+            "format",
+            options_list=["--format", "-f"],
+            help="Format.",
+        )
+        context.argument(
+            "partition_count",
+            options_list=["--partition-count", "--pc"],
+            help="Partition count.",
+        )
+        context.argument(
+            "partition_strategy",
+            options_list=["--partition-strategy", "--ps"],
+            help="Partition strategy.",
+        )
+        context.argument(
+            "qos",
+            options_list=["--qos"],
+            help="QoS.",
+        )
+        context.argument(
+            "topics",
+            options_list=["--topics", "--t"],
+            help="Topics.",
+        )
+        context.argument(
+            "authentication",
+            options_list=["--authentication", "--auth"],
+            help="Authentication.",
+        )
+        context.argument(
+            "cluster_name",
+            options_list=["--cluster", "-c"],
+            help="Cluster to associate the dataset with.",
+        )
+        context.argument(
+            "cluster_resource_group",
+            options_list=["--cluster-resource-group", "--crg"],
+            help="Resource group for cluster.",
+        )
+        context.argument(
+            "cluster_subscription",
+            options_list=["--cluster-subscription", "--cs"],
+            help="Subscription Id for cluster.",
+        )
+        context.argument(
+            "custom_location_name",
+            options_list=["--custom-location", "--cl"],
+            help="Custom location used to associate dataset with cluster.",
+        )
+        context.argument(
+            "custom_location_resource_group",
+            options_list=["--custom-location-resource-group", "--clrg"],
+            help="Resource group for custom location.",
+        )
+        context.argument(
+            "custom_location_subscription",
+            options_list=["--custom-location-subscription", "--cls"],
+            help="Subscription Id for custom location.",
+        )
+        context.argument(
+            "name",
+            options_list=["--name", "-n"],
+            help="stage name.",
+        )
+        context.argument(
+            "pipeline_name",
+            options_list=["--pipeline-name", "-p"],
+            help="Pipeline name.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="Instance name.",
+        )
+        context.argument(
+            "resource_group_name",
+            options_list=["--resource-group", "--rg"],
+            help="Resource group name.",
+        )
+        context.argument(
+            "pipeline_description",
+            options_list=["--description", "-d"],
+            help="Pipeline description.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "pipeline_enabled",
+            options_list=["--enabled"],
+            help="Flag indicating whether the pipeline should be running or not.",
+            arg_type=get_three_state_flag(),
+        )
+    
+    with self.argument_context("iot ops dp pipeline destination add mqtt") as context:
+        context.argument(
+            "broker",
+            options_list=["--broker", "-b"],
+            help="MQTT Broker.",
+        )
+        context.argument(
+            "format",
+            options_list=["--format", "-f"],
+            help="Format.",
+        )
+        context.argument(
+            "qos",
+            options_list=["--qos"],
+            help="QoS.",
+        )
+        context.argument(
+            "topic",
+            options_list=["--topic", "--t"],
+            help="Topics.",
+        )
+        context.argument(
+            "authentication",
+            options_list=["--authentication", "--auth"],
+            help="Authentication.",
+        )
+        context.argument(
+            "cluster_name",
+            options_list=["--cluster", "-c"],
+            help="Cluster to associate the dataset with.",
+        )
+        context.argument(
+            "cluster_resource_group",
+            options_list=["--cluster-resource-group", "--crg"],
+            help="Resource group for cluster.",
+        )
+        context.argument(
+            "cluster_subscription",
+            options_list=["--cluster-subscription", "--cs"],
+            help="Subscription Id for cluster.",
+        )
+        context.argument(
+            "custom_location_name",
+            options_list=["--custom-location", "--cl"],
+            help="Custom location used to associate dataset with cluster.",
+        )
+        context.argument(
+            "custom_location_resource_group",
+            options_list=["--custom-location-resource-group", "--clrg"],
+            help="Resource group for custom location.",
+        )
+        context.argument(
+            "custom_location_subscription",
+            options_list=["--custom-location-subscription", "--cls"],
+            help="Subscription Id for custom location.",
+        )
+        context.argument(
+            "name",
+            options_list=["--name", "-n"],
+            help="stage name.",
+        )
+        context.argument(
+            "pipeline_name",
+            options_list=["--pipeline-name", "-p"],
+            help="Pipeline name.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="Instance name.",
+        )
+        context.argument(
+            "resource_group_name",
+            options_list=["--resource-group", "--rg"],
+            help="Resource group name.",
+        )
+        context.argument(
+            "user_property",
+            options_list=["--user-property", "--up"],
+            help="Pipeline description.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "pipeline_description",
+            options_list=["--description", "-d"],
+            help="Pipeline description.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "pipeline_enabled",
+            options_list=["--enabled"],
+            help="Flag indicating whether the pipeline should be running or not.",
+            arg_type=get_three_state_flag(),
+        )
+
+    with self.argument_context("iot ops dp pipeline processor add enrich") as context:
+        context.argument(
+            "dataset",
+            options_list=["--dataset", "-d"],
+            help="Dataset name.",
+        )
+        context.argument(
+            "output_path",
+            options_list=["--output-path", "--op"],
+            help="Output path.",
+        )
+        context.argument(
+            "condition",
+            options_list=["--condition", "--c"],
+            help="Conditions.",
+        )
+        context.argument(
+            "always_array",
+            options_list=["--always-array", "--aa"],
+            help="Always array.",
+        )
+        context.argument(
+            "limit",
+            options_list=["--limit", "--l"],
+            help="Limit.",
+        )
+        context.argument(
+            "cluster_name",
+            options_list=["--cluster", "-c"],
+            help="Cluster to associate the dataset with.",
+        )
+        context.argument(
+            "cluster_resource_group",
+            options_list=["--cluster-resource-group", "--crg"],
+            help="Resource group for cluster.",
+        )
+        context.argument(
+            "cluster_subscription",
+            options_list=["--cluster-subscription", "--cs"],
+            help="Subscription Id for cluster.",
+        )
+        context.argument(
+            "custom_location_name",
+            options_list=["--custom-location", "--cl"],
+            help="Custom location used to associate dataset with cluster.",
+        )
+        context.argument(
+            "custom_location_resource_group",
+            options_list=["--custom-location-resource-group", "--clrg"],
+            help="Resource group for custom location.",
+        )
+        context.argument(
+            "custom_location_subscription",
+            options_list=["--custom-location-subscription", "--cls"],
+            help="Subscription Id for custom location.",
+        )
+        context.argument(
+            "name",
+            options_list=["--name", "-n"],
+            help="stage name.",
+        )
+        context.argument(
+            "pipeline_name",
+            options_list=["--pipeline-name", "-p"],
+            help="Pipeline name.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="Instance name.",
+        )
+        context.argument(
+            "resource_group_name",
+            options_list=["--resource-group", "--rg"],
+            help="Resource group name.",
+        )
+        context.argument(
+            "pipeline_description",
+            options_list=["--description", "-d"],
+            help="Pipeline description.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "pipeline_enabled",
+            options_list=["--enabled"],
+            help="Flag indicating whether"
+            "the pipeline should be running or not.",
+            arg_type=get_three_state_flag(),
+        )
+

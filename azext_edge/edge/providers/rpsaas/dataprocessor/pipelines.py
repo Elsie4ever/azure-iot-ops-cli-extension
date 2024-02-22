@@ -7,7 +7,10 @@
 from enum import Enum
 import json
 from uuid import uuid4
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
+from msrest.serialization import Model
+
+from azext_edge.edge.providers.edge_api.dataprocessor import DATA_PROCESSOR_API_V1, DataProcessorResourceKinds
 from .common import PIPELINE_INPUT_STAGE_PROPERTIES, PIPELINE_OUTPUT_STAGE_PROPERTIES, PIPELINE_PROCESSOR_STAGE_PROPERTIES
 from azext_edge.edge.util.common import assemble_nargs_to_dict
 
@@ -16,7 +19,7 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     RequiredArgumentMissingError,
 )
-from .base import DataProcessorBaseProvider
+from .base import DataProcessorBaseProvider, MicroObjectCache
 from ....util import build_query
 from ....common import DPPipelineInputStageTypes, DPPipelineOutputStageTypes, DPPipelineProcessorStageTypes, ResourceTypeMapping
 
@@ -107,6 +110,447 @@ class PipelineProvider(DataProcessorBaseProvider):
         )
         return poller
     
+
+    def add_source_mqtt(
+        self,
+        name: str,
+        pipeline_name: str,
+        resource_group_name: str,
+        topics: str,
+        format: str,
+        partition_count: int,
+        partition_strategy: List[str],
+        pipeline_enabled: Optional[bool],
+        pipeline_description: Optional[str] = None,
+        defer: Optional[bool] = False,
+        as_tree: Optional[bool] = False,
+        clean_session: Optional[bool] = None,
+        authentication: Optional[List[str]] = None,
+        cluster_name: Optional[str] = None,
+        cluster_resource_group: Optional[str] = None,
+        cluster_subscription: Optional[str] = None,
+        custom_location_name: Optional[str] = None,
+        custom_location_resource_group: Optional[str] = None,
+        custom_location_subscription: Optional[str] = None,
+        location: Optional[str] = None,
+        tags: Optional[Dict[str, str]] = None,
+    ):
+        
+
+        def _get_cache_entry_name(pipeline_name: str, instance_name: str):
+            return f"{instance_name}_{pipeline_name}"
+
+        # Location
+        if not location:
+            location = self.get_location(resource_group_name)
+        
+        extended_location = self.check_cluster_and_custom_location(
+            custom_location_name=custom_location_name,
+            custom_location_resource_group=custom_location_resource_group,
+            custom_location_subscription=custom_location_subscription,
+            cluster_name=cluster_name,
+            cluster_resource_group=cluster_resource_group,
+            cluster_subscription=cluster_subscription
+        )
+
+        # get instance name from cluster
+        # instance_name = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE)
+        instance_name = self.get_dp_instance_name(
+            extended_location=extended_location,
+        )
+
+        properties = {
+            "input": {
+                "displayName": name,
+                "type": "input/mqtt@v1",
+                "topics": topics,
+                "format": format,
+                "partitionCount": partition_count,
+                "partitionStrategy": partition_strategy,
+            }
+        }
+
+        if pipeline_description:
+            properties["description"] = pipeline_description
+        
+        if clean_session:
+            properties["input"]["cleanSession"] = clean_session
+
+        if authentication:
+            properties["input"]["authentication"] = build_query(authentication)
+
+        resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
+            f"{ResourceTypeMapping.instance.value}/{instance_name}/pipelines/{pipeline_name}"
+        dataset_body = {
+            "extendedLocation": extended_location,
+            "properties": properties,
+            "location": location,
+            "tags": tags,
+        }
+
+        cache = MicroObjectCache(self.cmd, object)
+        cache_resource_name = _get_cache_entry_name(pipeline_name=pipeline_name, instance_name=instance_name)
+        cache_serialization_model = "object"
+        cached_import: Union[object, None] = cache.get(
+            resource_name=cache_resource_name,
+            resource_group=resource_group_name,
+            resource_type=ResourceTypeMapping.pipeline.value,
+            serialization_model=cache_serialization_model,
+        )
+        update_to_import = cached_import if cached_import else {}
+
+        if dataset_body["properties"] != update_to_import.get("properties", None):
+            logger.warning("The dataset properties have changed, updating to new properties.")
+            update_to_import.update(dataset_body)
+
+        if as_tree:
+            _print_as_tree(update_to_import)
+
+        if defer:
+            # store to az cache
+            cached = cache.set(
+                resource_name=cache_resource_name,
+                resource_group=resource_group_name,
+                resource_type=ResourceTypeMapping.pipeline.value,
+                payload=update_to_import,
+                serialization_model=cache_serialization_model,
+            )
+            if not as_tree:
+                return cached
+        else:
+            if pipeline_enabled is None:
+                raise RequiredArgumentMissingError("Pipeline enabled is required.")
+            
+            update_to_import.update(dataset_body)
+            poller = self.resource_client.resources.begin_create_or_update_by_id(
+                resource_id=resource_path,
+                api_version=self.api_version,
+                parameters=update_to_import,
+            )
+            return poller
+
+
+    def add_destination_mqtt(
+        self,
+        name: str,
+        pipeline_name: str,
+        pipeline_enabled: bool,
+        resource_group_name: str,
+        broker: str,
+        topic: str,
+        format: str,
+        qos: Optional[int] = None,
+        user_property: Optional[List[str]] = None,
+        retry: Optional[List[str]] = None,
+        pipeline_description: Optional[str] = None,
+        defer: Optional[bool] = False,
+        as_tree: Optional[bool] = False,
+        authentication: Optional[List[str]] = None,
+        cluster_name: Optional[str] = None,
+        cluster_resource_group: Optional[str] = None,
+        cluster_subscription: Optional[str] = None,
+        custom_location_name: Optional[str] = None,
+        custom_location_resource_group: Optional[str] = None,
+        custom_location_subscription: Optional[str] = None,
+        location: Optional[str] = None,
+        tags: Optional[Dict[str, str]] = None,
+    ):
+
+        # Location
+        if not location:
+            location = self.get_location(resource_group_name)
+        
+        extended_location = self.check_cluster_and_custom_location(
+            custom_location_name=custom_location_name,
+            custom_location_resource_group=custom_location_resource_group,
+            custom_location_subscription=custom_location_subscription,
+            cluster_name=cluster_name,
+            cluster_resource_group=cluster_resource_group,
+            cluster_subscription=cluster_subscription
+        )
+
+        # get instance name from cluster
+        # instance_name = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE)
+        instance_name = self.get_dp_instance_name(
+            extended_location=extended_location,
+        )
+
+        dataset_body = {
+            "extendedLocation": extended_location,
+            "properties": {
+                "enabled": pipeline_enabled,
+                "stages": {
+                    f"{name}": {
+                        "displayName": name,
+                        "type": "output/mqtt@v1",
+                        "broker": broker,
+                        "topic": topic,
+                        "format": format,
+                    }
+                }
+            },
+        }
+
+        if pipeline_description:
+            dataset_body["properties"]["description"] = pipeline_description
+        
+        if authentication:
+            dataset_body["properties"]["output"]["authentication"] = build_query(authentication)
+
+        resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
+            f"{ResourceTypeMapping.instance.value}/{instance_name}/pipelines/{pipeline_name}"
+
+        cache = MicroObjectCache(self.cmd, object)
+        cache_resource_name = _get_cache_entry_name(pipeline_name=pipeline_name, instance_name=instance_name)
+        cache_serialization_model = "object"
+        cached_import: Union[object, None] = cache.get(
+            resource_name=cache_resource_name,
+            resource_group=resource_group_name,
+            resource_type=ResourceTypeMapping.pipeline.value,
+            serialization_model=cache_serialization_model,
+        )
+        update_to_import = cached_import if cached_import else {}
+
+        if dataset_body["properties"] != update_to_import.get("properties", None):
+            logger.warning("The dataset properties have changed, updating to new properties.")
+            update_to_import["properties"]["stages"] = {} if not update_to_import.get("properties", {}).get("stages") else update_to_import["properties"]["stages"]
+            update_to_import["properties"]["stages"][name] = dataset_body["properties"]["stages"][name]
+
+        if as_tree:
+            _print_as_tree(update_to_import)
+
+        if defer:
+            # store to az cache
+            cached = cache.set(
+                resource_name=cache_resource_name,
+                resource_group=resource_group_name,
+                resource_type=ResourceTypeMapping.pipeline.value,
+                payload=update_to_import,
+                serialization_model=cache_serialization_model,
+            )
+            if not as_tree:
+                return cached
+            
+        else:
+            poller = self.resource_client.resources.begin_create_or_update_by_id(
+                resource_id=resource_path,
+                api_version=self.api_version,
+                parameters=update_to_import,
+            )
+            return poller
+    
+
+    def add_processor_enrich(
+        self,
+        name: str,
+        pipeline_name: str,
+        resource_group_name: str,
+        dataset_name: str,
+        output_path: str,
+        next: str,
+        condition: Optional[List[str]] = None,
+        always_array: Optional[bool] = None,
+        limit: Optional[int] = None,
+        pipeline_description: Optional[str] = None,
+        defer: Optional[bool] = False,
+        as_tree: Optional[bool] = False,
+        cluster_name: Optional[str] = None,
+        cluster_resource_group: Optional[str] = None,
+        cluster_subscription: Optional[str] = None,
+        custom_location_name: Optional[str] = None,
+        custom_location_resource_group: Optional[str] = None,
+        custom_location_subscription: Optional[str] = None,
+        location: Optional[str] = None,
+        tags: Optional[Dict[str, str]] = None,
+    ):
+        # Location
+        if not location:
+            location = self.get_location(resource_group_name)
+        
+        extended_location = self.check_cluster_and_custom_location(
+            custom_location_name=custom_location_name,
+            custom_location_resource_group=custom_location_resource_group,
+            custom_location_subscription=custom_location_subscription,
+            cluster_name=cluster_name,
+            cluster_resource_group=cluster_resource_group,
+            cluster_subscription=cluster_subscription
+        )
+
+        # get instance name from cluster
+        # instance_name = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE)
+        instance_name = self.get_dp_instance_name(
+            extended_location=extended_location,
+        )
+
+        dataset_body = {
+            "extendedLocation": extended_location,
+            "properties": {
+                "stages": {
+                    f"{name}": {
+                        "displayName": name,
+                        "type": "processor/enrichment@v1",
+                        "dataset": dataset_name,
+                        "outputPath": output_path,
+                        "next": next
+                    }
+                }
+            },
+        }
+
+        if condition:
+            dataset_body["properties"]["condition"] = condition
+
+        if always_array:
+            dataset_body["properties"]["alwaysArray"] = always_array
+
+        if limit:
+            dataset_body["properties"]["limit"] = limit
+
+        if pipeline_description:
+            dataset_body["properties"]["description"] = pipeline_description
+        
+        cache = MicroObjectCache(self.cmd, object)
+        cache_resource_name = _get_cache_entry_name(pipeline_name=pipeline_name, instance_name=instance_name)
+        cache_serialization_model = "object"
+        cached_import: Union[object, None] = cache.get(
+            resource_name=cache_resource_name,
+            resource_group=resource_group_name,
+            resource_type=ResourceTypeMapping.pipeline.value,
+            serialization_model=cache_serialization_model,
+        )
+
+        update_to_import = cached_import if cached_import else {}
+
+        if dataset_body["properties"] != update_to_import.get("properties", None):
+            logger.warning("The dataset properties have changed, updating to new properties.")
+            update_to_import["properties"]["stages"] = {} if not update_to_import.get("properties", {}).get("stages") else update_to_import["properties"]["stages"]
+            update_to_import["properties"]["stages"][name] = dataset_body["properties"]["stages"][name]
+
+        if as_tree:
+            _print_as_tree(update_to_import)
+
+        if defer:
+            # store to az cache
+            cached = cache.set(
+                resource_name=cache_resource_name,
+                resource_group=resource_group_name,
+                resource_type=ResourceTypeMapping.pipeline.value,
+                payload=update_to_import,
+                serialization_model=cache_serialization_model,
+            )
+            if not as_tree:
+                return cached
+            
+        else:
+            resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
+            f"{ResourceTypeMapping.instance.value}/{instance_name}/pipelines/{pipeline_name}"
+            poller = self.resource_client.resources.begin_create_or_update_by_id(
+                resource_id=resource_path,
+                api_version=self.api_version,
+                parameters=update_to_import,
+            )
+            return poller
+
+        
+
+
+def _get_cache_entry_name(pipeline_name: str, instance_name: str):
+    return f"{instance_name}_{pipeline_name}"
+        
+
+def _print_as_tree(
+    update_to_import: Dict[str, any]
+):
+    # build tree from update_to_import with
+    # --------input stage(mqtt): {stage_name}
+    # |
+    # |
+    # --------processor stage(enrichment): {stage_name}
+    # |
+    # |
+    # --------output stage(mqtt): {stage_name}
+    properties = update_to_import.get("properties")
+    input = properties.get("input", {})
+    stages: dict = properties.get("stages", {})
+
+    if input:
+        print(f"--------input stage({input.get('type')}): {input.get('displayName')}")
+    else:
+        # print in red text: missing input stage
+        print("--------input stage: \033[91mMISSING\033[0m")
+
+    # get output stage that match type starts with "output"
+    output_stage = [stages[stage] for stage in stages if stages[stage].get("type").startswith("output")]
+    sorted, obesoletes = _sort_by_next(stages)
+    for stage in sorted:
+        if stages[stage].get("type").startswith("processor"):
+            print("|")
+            print("|")
+            print(f"--------processor stage({stages[stage].get('type')}): {stages[stage].get('displayName')}")
+    print("|")
+    print("|")
+
+    if output_stage[0].get('displayName') in obesoletes:
+        # remove from obesoletes
+        obesoletes.remove(output_stage[0].get('displayName'))
+
+    if output_stage and output_stage[0].get("type").startswith("output"):
+        print(f"--------output stage({output_stage[0].get('type')}): {output_stage[0].get('displayName')}")
+    else:
+        # print in red text: missing output stage
+        print("--------output stage: \033[91mMISSING\033[0m")
+    
+    if obesoletes:
+        print("\n\nObsolete stages:")
+        for obesolete in obesoletes:
+            print(f"{stages[obesolete].get('type')} stage: {stages[obesolete].get('displayName')}")
+
+
+def _sort_by_next(
+    stages: Dict[str, any]
+):
+    # sort the stages by "next" pointer
+    # find obsolete stages that next stage does not exist
+
+    obesoletes = []
+    sorted:list = list(stages.copy())
+    # while stages:
+    #     stage = stages.popitem()
+    #     next = stage[1].get("next")
+    #     # if next can be find equals stages's displayName, add to sorted
+    #     if next in stages:
+    #         sorted.append(stage)
+    #         sorted.append(stages.pop(next))
+    #     else:
+    #         if next in sorted:
+    #             sorted = sorted[:sorted.index(next)] + [stage] + sorted[sorted.index(next):]
+    #         else:
+    #             obesoletes.append(stage)
+    # index and stage
+    for index, stage in enumerate(stages):
+        next_id = stages[stage].get("next")
+        # if key of stage equals next_id, add to sorted
+        if next_id in stages:
+            if not stages[next_id].get("type").startswith("output"):
+                sorted.pop(index)
+                sorted = sorted[:sorted.index(next_id)] + [stage] + sorted[sorted.index(next_id):]
+        else:
+            obesoletes.append(stage)
+
+    for obesolete in obesoletes.copy():
+        if stages[obesolete].get("next", "").startswith("output"):
+            # remove from obesoletes
+            obesoletes.remove(obesolete)
+    sorted = [stage for stage in sorted if stage not in obesoletes]
+    
+    return sorted, obesoletes
+
+
+        
+
+
+            
+
 
 # Helpers
 def _get_required_args(

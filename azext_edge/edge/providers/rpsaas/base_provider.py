@@ -224,6 +224,7 @@ class RPSaaSBaseProvider:
                 custom_query=query,
                 type=ResourceTypeMapping.connected_cluster.value
             )
+            import pdb; pdb.set_trace()
             if len(cluster_query_result) == 0:
                 raise ValidationError(CUSTOM_LOCATION_DOES_NOT_EXIST_ERROR.format(custom_location_name))
             cluster = cluster_query_result[0]
