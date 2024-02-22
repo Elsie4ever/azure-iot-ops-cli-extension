@@ -32,6 +32,7 @@ DEPENDENCIES = [
     "kubernetes>=27.2,<29.0",
     "azure-identity>=1.14.1,<2.0",
     "protobuf~=4.25.0",
+    "msrest>=0.6.21",
     "opentelemetry-proto~=1.20.0",
 ]
 
