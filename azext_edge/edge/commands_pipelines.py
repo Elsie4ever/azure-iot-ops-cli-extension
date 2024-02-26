@@ -72,14 +72,15 @@ def create_pipeline(
 
 def add_pipeline_source_mqtt(
     cmd,
-    name: str,
     pipeline_name: str,
     pipeline_enabled: bool,
     resource_group_name: str,
-    topics: str,
-    format: str,
+    broker: str,
+    topic: List[str],
+    format: List[str],
     partition_count: int,
     partition_strategy: List[str],
+    name: Optional[str] = None,
     pipeline_description: Optional[str] = None,
     defer: Optional[bool] = None,
     clean_session: Optional[bool] = None,
@@ -97,11 +98,12 @@ def add_pipeline_source_mqtt(
     # get instance name from cluster
     pipeline_provider = PipelineProvider(cmd)
     return pipeline_provider.add_source_mqtt(
+        broker=broker,
         pipeline_name=pipeline_name,
         pipeline_enabled=pipeline_enabled,
         pipeline_description=pipeline_description,
         resource_group_name=resource_group_name,
-        topics=topics,
+        topic=topic,
         format=format,
         partition_count=partition_count,
         partition_strategy=partition_strategy,
@@ -123,13 +125,13 @@ def add_pipeline_source_mqtt(
 
 def add_pipeline_destination_mqtt(
     cmd,
-    name: str,
     pipeline_name: str,
     pipeline_enabled: bool,
     resource_group_name: str,
     broker: str,
-    topic: str,
-    format: str,
+    topic: List[str],
+    format: List[str],
+    name: Optional[str] = None,
     qos: Optional[int] = None,
     user_property: Optional[List[str]] = None,
     retry: Optional[List[str]] = None,

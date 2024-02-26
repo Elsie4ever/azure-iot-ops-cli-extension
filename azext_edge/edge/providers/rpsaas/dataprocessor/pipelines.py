@@ -113,14 +113,15 @@ class PipelineProvider(DataProcessorBaseProvider):
 
     def add_source_mqtt(
         self,
-        name: str,
         pipeline_name: str,
+        broker: str,
         resource_group_name: str,
-        topics: str,
-        format: str,
+        topic: List[str],
+        format: List[str],
         partition_count: int,
         partition_strategy: List[str],
-        pipeline_enabled: Optional[bool],
+        name: Optional[str] = None,
+        pipeline_enabled: Optional[bool] = True,
         pipeline_description: Optional[str] = None,
         defer: Optional[bool] = False,
         as_tree: Optional[bool] = False,
@@ -159,35 +160,6 @@ class PipelineProvider(DataProcessorBaseProvider):
             extended_location=extended_location,
         )
 
-        properties = {
-            "input": {
-                "displayName": name,
-                "type": "input/mqtt@v1",
-                "topics": topics,
-                "format": format,
-                "partitionCount": partition_count,
-                "partitionStrategy": partition_strategy,
-            }
-        }
-
-        if pipeline_description:
-            properties["description"] = pipeline_description
-        
-        if clean_session:
-            properties["input"]["cleanSession"] = clean_session
-
-        if authentication:
-            properties["input"]["authentication"] = build_query(authentication)
-
-        resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
-            f"{ResourceTypeMapping.instance.value}/{instance_name}/pipelines/{pipeline_name}"
-        dataset_body = {
-            "extendedLocation": extended_location,
-            "properties": properties,
-            "location": location,
-            "tags": tags,
-        }
-
         cache = MicroObjectCache(self.cmd, object)
         cache_resource_name = _get_cache_entry_name(pipeline_name=pipeline_name, instance_name=instance_name)
         cache_serialization_model = "object"
@@ -199,12 +171,57 @@ class PipelineProvider(DataProcessorBaseProvider):
         )
         update_to_import = cached_import if cached_import else {}
 
-        if dataset_body["properties"] != update_to_import.get("properties", None):
-            logger.warning("The dataset properties have changed, updating to new properties.")
-            update_to_import.update(dataset_body)
+        input_stage = {
+            "displayName": name if name else _generate_stage_name("mqtt"),
+            "type": "input/mqtt@v1",
+            "broker": broker,
+            "topics": topic,
+            "format": _process_format(format),
+            "partitionCount": int(partition_count),
+            "partitionStrategy": _process_partition_stategy(partition_strategy),
+            "authentication": _process_authentication(authentication),
+        }
 
-        if as_tree:
-            _print_as_tree(update_to_import)
+        if not update_to_import:
+            update_to_import = {
+                "extendedLocation": extended_location,
+                "properties": {
+                    "enabled": pipeline_enabled,
+                    "input": input_stage
+                },
+                "location": location,
+                "tags": tags,
+            }
+        else:
+            update_to_import["properties"]["input"] = input_stage
+            update_to_import = {
+                "extendedLocation": extended_location,
+                "properties": {
+                    "enabled": pipeline_enabled,
+                    "input": update_to_import["properties"]["input"],
+                    "stages": update_to_import["properties"].get("stages", {})
+                },
+                "location": location,
+                "tags": tags,
+            }
+
+        if pipeline_description:
+            update_to_import["description"] = pipeline_description
+        
+        if clean_session:
+            update_to_import["input"]["cleanSession"] = clean_session
+
+        resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
+            f"{ResourceTypeMapping.instance.value}/{instance_name}/pipelines/{pipeline_name}"
+        body = {
+            "extendedLocation": extended_location,
+            "properties": update_to_import["properties"],
+            "location": location,
+            "tags": tags,
+        }
+        update_to_import.update(body)
+
+        ordered, obsoletes = _print_as_tree(update_to_import, as_tree)
 
         if defer:
             # store to az cache
@@ -220,8 +237,9 @@ class PipelineProvider(DataProcessorBaseProvider):
         else:
             if pipeline_enabled is None:
                 raise RequiredArgumentMissingError("Pipeline enabled is required.")
-            
-            update_to_import.update(dataset_body)
+
+            update_to_import = _reorder_stages(update_to_import, ordered, obsoletes)
+
             poller = self.resource_client.resources.begin_create_or_update_by_id(
                 resource_id=resource_path,
                 api_version=self.api_version,
@@ -232,13 +250,13 @@ class PipelineProvider(DataProcessorBaseProvider):
 
     def add_destination_mqtt(
         self,
-        name: str,
         pipeline_name: str,
         pipeline_enabled: bool,
         resource_group_name: str,
         broker: str,
-        topic: str,
-        format: str,
+        topic: List[str],
+        format: List[str],
+        name: Optional[str] = None,
         qos: Optional[int] = None,
         user_property: Optional[List[str]] = None,
         retry: Optional[List[str]] = None,
@@ -275,31 +293,6 @@ class PipelineProvider(DataProcessorBaseProvider):
             extended_location=extended_location,
         )
 
-        dataset_body = {
-            "extendedLocation": extended_location,
-            "properties": {
-                "enabled": pipeline_enabled,
-                "stages": {
-                    f"{name}": {
-                        "displayName": name,
-                        "type": "output/mqtt@v1",
-                        "broker": broker,
-                        "topic": topic,
-                        "format": format,
-                    }
-                }
-            },
-        }
-
-        if pipeline_description:
-            dataset_body["properties"]["description"] = pipeline_description
-        
-        if authentication:
-            dataset_body["properties"]["output"]["authentication"] = build_query(authentication)
-
-        resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
-            f"{ResourceTypeMapping.instance.value}/{instance_name}/pipelines/{pipeline_name}"
-
         cache = MicroObjectCache(self.cmd, object)
         cache_resource_name = _get_cache_entry_name(pipeline_name=pipeline_name, instance_name=instance_name)
         cache_serialization_model = "object"
@@ -311,13 +304,60 @@ class PipelineProvider(DataProcessorBaseProvider):
         )
         update_to_import = cached_import if cached_import else {}
 
-        if dataset_body["properties"] != update_to_import.get("properties", None):
-            logger.warning("The dataset properties have changed, updating to new properties.")
-            update_to_import["properties"]["stages"] = {} if not update_to_import.get("properties", {}).get("stages") else update_to_import["properties"]["stages"]
-            update_to_import["properties"]["stages"][name] = dataset_body["properties"]["stages"][name]
+        id = _generate_stage_name("mqtt")
 
-        if as_tree:
-            _print_as_tree(update_to_import)
+        output_stage = {
+            "displayName": name if name else id,
+            "type": "output/mqtt@v1",
+            "broker": broker,
+            "topic": _process_topic(topic),
+            "format": _process_format(format),
+            "authentication": _process_authentication(authentication),
+        }
+
+        if not update_to_import:
+            update_to_import = {
+                "extendedLocation": extended_location,
+                "properties": {
+                    "enabled": pipeline_enabled,
+                    "stages": {
+                        "output": output_stage
+                    }
+                },
+                "location": location,
+                "tags": tags,
+            }
+        else:
+            stages = update_to_import["properties"].get("stages", {})
+            stages["output"] = output_stage
+
+            update_to_import = {
+                "extendedLocation": extended_location,
+                "properties": {
+                    "enabled": pipeline_enabled,
+                    "input": update_to_import["properties"]["input"],
+                    "stages": stages
+                },
+                "location": location,
+                "tags": tags,
+            }
+
+        if pipeline_description:
+            update_to_import["properties"]["description"] = pipeline_description
+        
+        if qos:
+            update_to_import["properties"]["output"]["qos"] = qos
+
+        if user_property:
+            update_to_import["properties"]["output"]["userProperties"] = _process_user_property(user_property)
+        
+        if retry:
+            update_to_import["properties"]["output"]["retry"] = _process_retry(retry)
+
+        resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
+            f"{ResourceTypeMapping.instance.value}/{instance_name}/pipelines/{pipeline_name}"
+
+        ordered, obsoletes = _print_as_tree(update_to_import, as_tree)
 
         if defer:
             # store to az cache
@@ -332,12 +372,24 @@ class PipelineProvider(DataProcessorBaseProvider):
                 return cached
             
         else:
-            poller = self.resource_client.resources.begin_create_or_update_by_id(
-                resource_id=resource_path,
-                api_version=self.api_version,
-                parameters=update_to_import,
-            )
-            return poller
+            update_to_import = _reorder_stages(update_to_import, ordered, obsoletes)
+
+            # ask user to confirm the update, if yes, update the pipeline
+            if not as_tree:
+                print(json.dumps(update_to_import, indent=4))
+
+            # ask user
+            print("If you are satisfied with the changes, type 'y' to confirm the pipeline creation, otherwise type 'n' to cancel. (y/n)")
+            answer = input()
+
+            if answer.lower() == "y":
+                poller = self.resource_client.resources.begin_create_or_update_by_id(
+                    resource_id=resource_path,
+                    api_version=self.api_version,
+                    parameters=update_to_import,
+                )
+        
+                return poller
     
 
     def add_processor_enrich(
@@ -348,6 +400,7 @@ class PipelineProvider(DataProcessorBaseProvider):
         dataset_name: str,
         output_path: str,
         next: str,
+        pipeline_enabled: Optional[bool] = True,
         condition: Optional[List[str]] = None,
         always_array: Optional[bool] = None,
         limit: Optional[int] = None,
@@ -382,33 +435,6 @@ class PipelineProvider(DataProcessorBaseProvider):
             extended_location=extended_location,
         )
 
-        dataset_body = {
-            "extendedLocation": extended_location,
-            "properties": {
-                "stages": {
-                    f"{name}": {
-                        "displayName": name,
-                        "type": "processor/enrichment@v1",
-                        "dataset": dataset_name,
-                        "outputPath": output_path,
-                        "next": next
-                    }
-                }
-            },
-        }
-
-        if condition:
-            dataset_body["properties"]["condition"] = condition
-
-        if always_array:
-            dataset_body["properties"]["alwaysArray"] = always_array
-
-        if limit:
-            dataset_body["properties"]["limit"] = limit
-
-        if pipeline_description:
-            dataset_body["properties"]["description"] = pipeline_description
-        
         cache = MicroObjectCache(self.cmd, object)
         cache_resource_name = _get_cache_entry_name(pipeline_name=pipeline_name, instance_name=instance_name)
         cache_serialization_model = "object"
@@ -421,13 +447,58 @@ class PipelineProvider(DataProcessorBaseProvider):
 
         update_to_import = cached_import if cached_import else {}
 
-        if dataset_body["properties"] != update_to_import.get("properties", None):
-            logger.warning("The dataset properties have changed, updating to new properties.")
-            update_to_import["properties"]["stages"] = {} if not update_to_import.get("properties", {}).get("stages") else update_to_import["properties"]["stages"]
-            update_to_import["properties"]["stages"][name] = dataset_body["properties"]["stages"][name]
+        id = _generate_stage_name("enrich")
 
-        if as_tree:
-            _print_as_tree(update_to_import)
+        stage = {
+            "displayName": name if name else id,
+            "type": "processor/enrich@v1",
+            "dataset": dataset_name,
+            "outputPath": output_path,
+            "next": next
+        }
+
+        if not update_to_import:
+            update_to_import = {
+                "extendedLocation": extended_location,
+                "properties": {
+                    "enabled": pipeline_enabled,
+                    "stages": {
+                        f"{id}": stage
+                    }
+                },
+                "location": location,
+                "tags": tags,
+            }
+        else:
+            # find id using name
+            if name:
+                old_id = [key for key, value in update_to_import["properties"]["stages"].items() if value["displayName"] == name]
+                id = old_id[0] if old_id else id
+            update_to_import["properties"]["stages"][id] = stage
+            update_to_import = {
+                "extendedLocation": extended_location,
+                "properties": {
+                    "enabled": pipeline_enabled,
+                    "stages": update_to_import["properties"]["stages"],
+                    "input": update_to_import["properties"].get("input", {}),
+                },
+                "location": location,
+                "tags": tags,
+            }
+
+        if condition:
+            update_to_import["properties"]["conditions"] = _process_condition(condition)
+
+        if always_array:
+            update_to_import["properties"]["alwaysArray"] = always_array
+
+        if limit:
+            update_to_import["properties"]["limit"] = limit
+
+        if pipeline_description:
+            update_to_import["properties"]["description"] = pipeline_description
+
+        ordered, obsoletes=_print_as_tree(update_to_import, as_tree)
 
         if defer:
             # store to az cache
@@ -442,14 +513,169 @@ class PipelineProvider(DataProcessorBaseProvider):
                 return cached
             
         else:
+            update_to_import = _reorder_stages(update_to_import, ordered, obsoletes)
             resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
             f"{ResourceTypeMapping.instance.value}/{instance_name}/pipelines/{pipeline_name}"
-            poller = self.resource_client.resources.begin_create_or_update_by_id(
-                resource_id=resource_path,
-                api_version=self.api_version,
-                parameters=update_to_import,
-            )
-            return poller
+            # ask user to confirm the update, if yes, update the pipeline
+            if not as_tree:
+                print(json.dumps(update_to_import, indent=4))
+
+            # ask user
+            print("If you are satisfied with the changes, type 'y' to confirm the pipeline creation, otherwise type 'n' to cancel. (y/n)")
+            answer = input()
+
+            if answer.lower() == "y":
+                poller = self.resource_client.resources.begin_create_or_update_by_id(
+                    resource_id=resource_path,
+                    api_version=self.api_version,
+                    parameters=update_to_import,
+                )
+        
+                return poller
+
+
+def _process_format(
+    format: List[str]
+):
+    parsed_format = assemble_nargs_to_dict(format)
+    # check type
+    type = parsed_format.get("type", None)
+    if not type:
+        raise RequiredArgumentMissingError("Format type is required.")
+    
+    return parsed_format
+
+
+def _process_topic(
+    topic: List[str]
+):
+    parsed_topic = assemble_nargs_to_dict(topic)
+    # check type
+    type = parsed_topic.get("type", None)
+    if not type:
+        raise RequiredArgumentMissingError("Topic type is required.")
+    
+    value = parsed_topic.get("value", None)
+    if not value:
+        raise RequiredArgumentMissingError("Topic value is required.")
+    
+    return parsed_topic
+
+
+def _process_retry(
+    retry: List[str]
+):
+    parsed_retry = assemble_nargs_to_dict(retry)
+    # check type
+    type = parsed_retry.get("type", None)
+    if not type:
+        raise RequiredArgumentMissingError("Retry type is required.")
+    
+    return parsed_retry
+
+
+def _process_partition_stategy(
+    partition_strategy: List[str]
+):
+    parsed_partition_strategy = assemble_nargs_to_dict(partition_strategy)
+    # check type
+    type = parsed_partition_strategy.get("type", None)
+    if not type:
+        raise RequiredArgumentMissingError("Partition strategy type is required.")
+    
+    if type in ["id", "key"]:
+        expression = parsed_partition_strategy.get("expression", None)
+        if not expression:
+            raise RequiredArgumentMissingError("Partition strategy expression is required.")
+    
+    return parsed_partition_strategy
+
+
+def _process_authentication(
+    authentication: Optional[List[str]] = None
+):
+    if not authentication:
+        return {"type": "none"}
+    parsed_authentication = assemble_nargs_to_dict(authentication)
+    # check type
+    type = parsed_authentication.get("type", None)
+    if not type or type not in ["none", "usernamePassword", "serviceAccountToken"]:
+        raise InvalidArgumentValueError("Authentication type is required and must be one of 'none', 'usernamePassword', 'serviceAccountToken'.")
+    
+    if type == "usernamePassword":
+        username = parsed_authentication.get("username", None)
+        password = parsed_authentication.get("password", None)
+        if not username or not password:
+            raise RequiredArgumentMissingError("Username and password are required for usernamePassword authentication.")
+    
+    return parsed_authentication
+
+
+def _process_condition(
+    condition: List[str]
+):
+    parsed_conditions = assemble_nargs_to_dict(condition)
+    # check type
+    for condition in parsed_conditions:
+        type = condition.get("type", None)
+        if not type:
+            raise RequiredArgumentMissingError("Condition type is required.")
+        
+        input_path = condition.get("inputPath", None)
+        if not input_path:
+            raise RequiredArgumentMissingError("Condition inputPath is required.")
+        
+    return parsed_conditions
+
+
+def _process_user_property(
+    user_property: List[str]
+):
+    parsed_user_properties = assemble_nargs_to_dict(user_property)
+    # check type
+    for user_property in parsed_user_properties:
+        key = user_property.get("key", None)
+        if not key:
+            raise RequiredArgumentMissingError("User property key is required.")
+        
+        value = user_property.get("value", None)
+        if not value:
+            raise RequiredArgumentMissingError("User property value is required.")
+    
+    return parsed_user_properties
+    
+    
+
+def _generate_stage_name(
+    stage_type: str
+) -> str:
+    # generate 6-charactors hexdecimal string
+    return f"{stage_type}_{uuid4().hex[:6]}"
+
+
+def _reorder_stages(
+    update_to_import: Dict[str, any],
+    ordered: List[str],
+    obsoletes: List[str]
+):
+    # reorder stages in update_to_import
+    properties = update_to_import.get("properties")
+    input = properties.get("input", {})
+    stages: dict = properties.get("stages", {})
+
+    # remove obsoletes from stages
+    for obesolete in obsoletes:
+        stages.pop(obesolete, None)
+
+    # reassign "next" property of stages
+    if input:
+        input["next"] = [ordered[1]]
+        ordered.pop(0)
+    for index, stage in enumerate(ordered):
+        if index < len(ordered) - 1:
+            stages[stage]["next"] = [ordered[index + 1]]
+    
+    return update_to_import
 
         
 
@@ -459,7 +685,8 @@ def _get_cache_entry_name(pipeline_name: str, instance_name: str):
         
 
 def _print_as_tree(
-    update_to_import: Dict[str, any]
+    update_to_import: Dict[str, any],
+    as_tree: Optional[bool] = False
 ):
     # build tree from update_to_import with
     # --------input stage(mqtt): {stage_name}
@@ -472,38 +699,52 @@ def _print_as_tree(
     properties = update_to_import.get("properties")
     input = properties.get("input", {})
     stages: dict = properties.get("stages", {})
-
-    if input:
-        print(f"--------input stage({input.get('type')}): {input.get('displayName')}")
-    else:
-        # print in red text: missing input stage
-        print("--------input stage: \033[91mMISSING\033[0m")
+    if as_tree:
+        if input:
+            print(f"+-------  input stage({input.get('type')}): {input.get('displayName')}")
+        else:
+            # print in red text: missing input stage
+            print("+-------  input stage: \033[91mMISSING\033[0m")
 
     # get output stage that match type starts with "output"
-    output_stage = [stages[stage] for stage in stages if stages[stage].get("type").startswith("output")]
+    output_stage = []
+    for stage in stages:
+        if stages[stage].get("type").startswith("output"):
+            output_stage.append(stages[stage])
     sorted, obesoletes = _sort_by_next(stages)
-    for stage in sorted:
-        if stages[stage].get("type").startswith("processor"):
-            print("|")
-            print("|")
-            print(f"--------processor stage({stages[stage].get('type')}): {stages[stage].get('displayName')}")
-    print("|")
-    print("|")
+    if as_tree:
+        for stage in sorted:
+            if stages[stage].get("type").startswith("processor"):
+                print("|")
+                print("|")
+                print(f"+-------  processor stage({stages[stage].get('type')}): {stages[stage].get('displayName')}")
+        print("|")
+        print("|")
 
-    if output_stage[0].get('displayName') in obesoletes:
+    if len(output_stage) > 0 and "output" in obesoletes:
         # remove from obesoletes
-        obesoletes.remove(output_stage[0].get('displayName'))
+        obesoletes.remove("output")
 
-    if output_stage and output_stage[0].get("type").startswith("output"):
-        print(f"--------output stage({output_stage[0].get('type')}): {output_stage[0].get('displayName')}")
-    else:
-        # print in red text: missing output stage
-        print("--------output stage: \033[91mMISSING\033[0m")
+    if as_tree:
+        if output_stage and output_stage[0].get("type").startswith("output"):
+            print(f"+-------  output stage({output_stage[0].get('type')}): {output_stage[0].get('displayName')}")
+        else:
+            # print in red text: missing output stage
+            print("+-------  output stage: \033[91mMISSING\033[0m")
+        
+        if obesoletes:
+            print("\n\n\033[93mObsolete stages:\033[0m")
+            for obesolete in obesoletes:
+                print(f"{stages[obesolete].get('type')} stage: {stages[obesolete].get('displayName')}")
     
-    if obesoletes:
-        print("\n\nObsolete stages:")
-        for obesolete in obesoletes:
-            print(f"{stages[obesolete].get('type')} stage: {stages[obesolete].get('displayName')}")
+    # update sorted list to include input stage and output stage if there is any
+    if input:
+        sorted.insert(0, "input")
+    if output_stage:
+        sorted.append("output")
+
+    return sorted, obesoletes
+    
 
 
 def _sort_by_next(
@@ -528,7 +769,10 @@ def _sort_by_next(
     #             obesoletes.append(stage)
     # index and stage
     for index, stage in enumerate(stages):
-        next_id = stages[stage].get("next")
+        next_name = stages[stage].get("next")
+        # find id from displayName
+        next_id = [key for key, value in stages.items() if value.get("displayName") == next_name]
+        next_id = next_id[0] if next_id else ""
         # if key of stage equals next_id, add to sorted
         if next_id in stages:
             if not stages[next_id].get("type").startswith("output"):
@@ -538,7 +782,8 @@ def _sort_by_next(
             obesoletes.append(stage)
 
     for obesolete in obesoletes.copy():
-        if stages[obesolete].get("next", "").startswith("output"):
+        output_stage = [stage for stage in stages if stages[stage].get("type").startswith("output")]
+        if output_stage and stages[obesolete].get("next", "").startswith("output"):
             # remove from obesoletes
             obesoletes.remove(obesolete)
     sorted = [stage for stage in sorted if stage not in obesoletes]

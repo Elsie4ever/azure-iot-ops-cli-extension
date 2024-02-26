@@ -1115,6 +1115,14 @@ def load_iotops_arguments(self, _):
             arg_group="Processor Stages"
         )
     
+    with self.argument_context("iot ops dp pipeline") as context:
+        context.argument(
+            "defer",
+            options_list=["--defer"],
+            help="Flag indicating whether the pipeline should be running or not.",
+            arg_type=get_three_state_flag(),
+        )
+    
     with self.argument_context("iot ops dp pipeline source add mqtt") as context:
         context.argument(
             "broker",
@@ -1123,6 +1131,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "format",
+            nargs="+",
             options_list=["--format", "-f"],
             help="Format.",
         )
@@ -1133,6 +1142,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "partition_strategy",
+            nargs="+",
             options_list=["--partition-strategy", "--ps"],
             help="Partition strategy.",
         )
@@ -1142,12 +1152,14 @@ def load_iotops_arguments(self, _):
             help="QoS.",
         )
         context.argument(
-            "topics",
-            options_list=["--topics", "--t"],
-            help="Topics.",
+            "topic",
+            action="append",
+            options_list=["--topic", "--t"],
+            help="Topic.",
         )
         context.argument(
             "authentication",
+            nargs="+",
             options_list=["--authentication", "--auth"],
             help="Authentication.",
         )
@@ -1222,6 +1234,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "format",
+            nargs="+",
             options_list=["--format", "-f"],
             help="Format.",
         )
@@ -1232,6 +1245,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "topic",
+            nargs="+",
             options_list=["--topic", "--t"],
             help="Topics.",
         )
@@ -1292,6 +1306,8 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "user_property",
+            nargs="+",
+            action="append",
             options_list=["--user-property", "--up"],
             help="Pipeline description.",
             arg_group="Additional Info",
@@ -1308,6 +1324,12 @@ def load_iotops_arguments(self, _):
             help="Flag indicating whether the pipeline should be running or not.",
             arg_type=get_three_state_flag(),
         )
+        context.argument(
+            "retry",
+            nargs="+",
+            options_list=["--retry"],
+            help="Retry.",
+        )
 
     with self.argument_context("iot ops dp pipeline processor add enrich") as context:
         context.argument(
@@ -1322,6 +1344,8 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "condition",
+            nargs="+",
+            action="append",
             options_list=["--condition", "--c"],
             help="Conditions.",
         )

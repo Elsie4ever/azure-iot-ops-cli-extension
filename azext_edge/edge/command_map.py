@@ -116,9 +116,9 @@ def load_iotops_commands(self, _):
         command_type=pipeline_resource_ops,
     ) as cmd_group:
         cmd_group.command("mqtt", "add_pipeline_source_mqtt")
-        cmd_group.command("http", "add_pipeline_source_http")
-        cmd_group.command("influxdb", "add_pipeline_source_influxdb")
-        cmd_group.command("sql", "add_pipeline_source_sql")
+        cmd_group.command("http", "add_pipeline_source_mqtt")
+        cmd_group.command("influxdb", "add_pipeline_source_mqtt")
+        cmd_group.command("sql", "add_pipeline_source_mqtt")
     
     with self.command_group(
         "iot ops dp pipeline destination add",
