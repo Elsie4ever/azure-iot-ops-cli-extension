@@ -92,6 +92,7 @@ class MicroObjectCache(object):
             resource_group,
             resource_type,
         )
+
         filename = "{}.json".format(resource_name)
         return directory, filename
 

@@ -111,6 +111,112 @@ class PipelineProvider(DataProcessorBaseProvider):
         return poller
     
 
+    def submit(
+        self,
+        pipeline_name: str,
+        resource_group_name: str,
+        instance_name: Optional[str]=None,
+        disabled: Optional[bool]=False,
+        desc: Optional[str]=None,
+        cluster_name: Optional[str] = None,
+        cluster_resource_group: Optional[str] = None,
+        cluster_subscription: Optional[str] = None,
+        custom_location_name: Optional[str] = None,
+        custom_location_resource_group: Optional[str] = None,
+        custom_location_subscription: Optional[str] = None,
+        location: Optional[str] = None,
+        tags: Optional[Dict[str, str]] = None,
+    ):
+        # Location
+        if not location:
+            location = self.get_location(resource_group_name)
+        
+        extended_location = self.check_cluster_and_custom_location(
+            custom_location_name=custom_location_name,
+            custom_location_resource_group=custom_location_resource_group,
+            custom_location_subscription=custom_location_subscription,
+            cluster_name=cluster_name,
+            cluster_resource_group=cluster_resource_group,
+            cluster_subscription=cluster_subscription
+        )
+
+        if not instance_name:
+            instance_name = self.get_dp_instance_name(extended_location=extended_location)
+
+        cache = MicroObjectCache(self.cmd, object)
+        cache_resource_name = _get_cache_entry_name(pipeline_name=pipeline_name, instance_name=instance_name)
+        cache_serialization_model = "object"
+        cached_import: Union[object, None] = cache.get(
+            resource_name=cache_resource_name,
+            resource_group=resource_group_name,
+            resource_type=ResourceTypeMapping.pipeline.value,
+            serialization_model=cache_serialization_model,
+        )
+        update_to_import = cached_import if cached_import else {}
+
+        if not update_to_import:
+            raise RequiredArgumentMissingError("No pipeline data found in cache. Please create a pipeline first.")
+        
+        ordered, obsolete = _print_as_tree(update_to_import)
+        update_to_import = _reorder_stages(update_to_import, ordered, obsolete)
+
+        resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
+            f"{ResourceTypeMapping.instance.value}/{instance_name}/pipelines/{pipeline_name}"
+        dataset_body = {
+            "extendedLocation": extended_location,
+            "properties": {
+                "enabled": not disabled,
+                "description": desc,
+                "input": update_to_import["properties"]["input"],
+                "stages": update_to_import["properties"]["stages"]
+            },
+            "location": location,
+            "tags": tags,
+        }
+        poller = self.resource_client.resources.begin_create_or_update_by_id(
+            resource_id=resource_path,
+            api_version=self.api_version,
+            parameters=dataset_body,
+        )
+        return poller
+    
+
+    def visualize(
+        self,
+        pipeline_name: str,
+        resource_group_name: str,
+        instance_name: Optional[str]=None,
+        cluster_name: Optional[str] = None,
+    )-> Dict[str, any]:
+        extended_location = self.check_cluster_and_custom_location(
+            custom_location_name=None,
+            custom_location_resource_group=None,
+            custom_location_subscription=None,
+            cluster_name=cluster_name,
+            cluster_resource_group=None,
+            cluster_subscription=None
+        )
+
+        if not instance_name:
+            instance_name = self.get_dp_instance_name(extended_location=extended_location)
+
+        cache = MicroObjectCache(self.cmd, object)
+        cache_resource_name = _get_cache_entry_name(pipeline_name=pipeline_name, instance_name=instance_name)
+        cache_serialization_model = "object"
+        cached_import: Union[object, None] = cache.get(
+            resource_name=cache_resource_name,
+            resource_group=resource_group_name,
+            resource_type=ResourceTypeMapping.pipeline.value,
+            serialization_model=cache_serialization_model,
+        )
+        update_to_import = cached_import if cached_import else {}
+
+        if not update_to_import:
+            raise RequiredArgumentMissingError("No pipeline data found in cache. Please create a pipeline first.")
+
+        _print_as_tree(update_to_import, True)
+    
+
     def add_source_mqtt(
         self,
         pipeline_name: str,
@@ -123,8 +229,7 @@ class PipelineProvider(DataProcessorBaseProvider):
         name: Optional[str] = None,
         pipeline_enabled: Optional[bool] = True,
         pipeline_description: Optional[str] = None,
-        defer: Optional[bool] = False,
-        as_tree: Optional[bool] = False,
+        visualize: Optional[bool] = False,
         clean_session: Optional[bool] = None,
         authentication: Optional[List[str]] = None,
         cluster_name: Optional[str] = None,
@@ -156,9 +261,7 @@ class PipelineProvider(DataProcessorBaseProvider):
 
         # get instance name from cluster
         # instance_name = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE)
-        instance_name = self.get_dp_instance_name(
-            extended_location=extended_location,
-        )
+        instance_name = self.get_dp_instance_name(extended_location=extended_location)
 
         cache = MicroObjectCache(self.cmd, object)
         cache_resource_name = _get_cache_entry_name(pipeline_name=pipeline_name, instance_name=instance_name)
@@ -172,7 +275,7 @@ class PipelineProvider(DataProcessorBaseProvider):
         update_to_import = cached_import if cached_import else {}
 
         input_stage = {
-            "displayName": name if name else _generate_stage_name("mqtt"),
+            "displayName": name if name else "input",
             "type": "input/mqtt@v1",
             "broker": broker,
             "topics": topic,
@@ -221,31 +324,30 @@ class PipelineProvider(DataProcessorBaseProvider):
         }
         update_to_import.update(body)
 
-        ordered, obsoletes = _print_as_tree(update_to_import, as_tree)
+        ordered, obsoletes = _print_as_tree(update_to_import, visualize)
 
-        if defer:
-            # store to az cache
-            cached = cache.set(
-                resource_name=cache_resource_name,
-                resource_group=resource_group_name,
-                resource_type=ResourceTypeMapping.pipeline.value,
-                payload=update_to_import,
-                serialization_model=cache_serialization_model,
-            )
-            if not as_tree:
-                return cached
-        else:
-            if pipeline_enabled is None:
-                raise RequiredArgumentMissingError("Pipeline enabled is required.")
+        # store to az cache
+        cached = cache.set(
+            resource_name=cache_resource_name,
+            resource_group=resource_group_name,
+            resource_type=ResourceTypeMapping.pipeline.value,
+            payload=update_to_import,
+            serialization_model=cache_serialization_model,
+        )
+        if not visualize:
+            return cached
+        # else:
+        #     if pipeline_enabled is None:
+        #         raise RequiredArgumentMissingError("Pipeline enabled is required.")
 
-            update_to_import = _reorder_stages(update_to_import, ordered, obsoletes)
+        #     update_to_import = _reorder_stages(update_to_import, ordered, obsoletes)
 
-            poller = self.resource_client.resources.begin_create_or_update_by_id(
-                resource_id=resource_path,
-                api_version=self.api_version,
-                parameters=update_to_import,
-            )
-            return poller
+        #     poller = self.resource_client.resources.begin_create_or_update_by_id(
+        #         resource_id=resource_path,
+        #         api_version=self.api_version,
+        #         parameters=update_to_import,
+        #     )
+        #     return poller
 
 
     def add_destination_mqtt(
@@ -261,8 +363,7 @@ class PipelineProvider(DataProcessorBaseProvider):
         user_property: Optional[List[str]] = None,
         retry: Optional[List[str]] = None,
         pipeline_description: Optional[str] = None,
-        defer: Optional[bool] = False,
-        as_tree: Optional[bool] = False,
+        visualize: Optional[bool] = False,
         authentication: Optional[List[str]] = None,
         cluster_name: Optional[str] = None,
         cluster_resource_group: Optional[str] = None,
@@ -287,11 +388,7 @@ class PipelineProvider(DataProcessorBaseProvider):
             cluster_subscription=cluster_subscription
         )
 
-        # get instance name from cluster
-        # instance_name = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE)
-        instance_name = self.get_dp_instance_name(
-            extended_location=extended_location,
-        )
+        instance_name = self.get_dp_instance_name(extended_location=extended_location)
 
         cache = MicroObjectCache(self.cmd, object)
         cache_resource_name = _get_cache_entry_name(pipeline_name=pipeline_name, instance_name=instance_name)
@@ -304,10 +401,8 @@ class PipelineProvider(DataProcessorBaseProvider):
         )
         update_to_import = cached_import if cached_import else {}
 
-        id = _generate_stage_name("mqtt")
-
         output_stage = {
-            "displayName": name if name else id,
+            "displayName": name if name else "output",
             "type": "output/mqtt@v1",
             "broker": broker,
             "topic": _process_topic(topic),
@@ -357,39 +452,38 @@ class PipelineProvider(DataProcessorBaseProvider):
         resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
             f"{ResourceTypeMapping.instance.value}/{instance_name}/pipelines/{pipeline_name}"
 
-        ordered, obsoletes = _print_as_tree(update_to_import, as_tree)
+        ordered, obsoletes = _print_as_tree(update_to_import, visualize)
 
-        if defer:
-            # store to az cache
-            cached = cache.set(
-                resource_name=cache_resource_name,
-                resource_group=resource_group_name,
-                resource_type=ResourceTypeMapping.pipeline.value,
-                payload=update_to_import,
-                serialization_model=cache_serialization_model,
-            )
-            if not as_tree:
-                return cached
+        # store to az cache
+        cached = cache.set(
+            resource_name=cache_resource_name,
+            resource_group=resource_group_name,
+            resource_type=ResourceTypeMapping.pipeline.value,
+            payload=update_to_import,
+            serialization_model=cache_serialization_model,
+        )
+        if not visualize:
+            return cached
             
-        else:
-            update_to_import = _reorder_stages(update_to_import, ordered, obsoletes)
+        # else:
+        #     update_to_import = _reorder_stages(update_to_import, ordered, obsoletes)
 
-            # ask user to confirm the update, if yes, update the pipeline
-            if not as_tree:
-                print(json.dumps(update_to_import, indent=4))
+        #     # ask user to confirm the update, if yes, update the pipeline
+        #     if not as_tree:
+        #         print(json.dumps(update_to_import, indent=4))
 
-            # ask user
-            print("If you are satisfied with the changes, type 'y' to confirm the pipeline creation, otherwise type 'n' to cancel. (y/n)")
-            answer = input()
+        #     # ask user
+        #     print("If you are satisfied with the changes, type 'y' to confirm the pipeline creation, otherwise type 'n' to cancel. (y/n)")
+        #     answer = input()
 
-            if answer.lower() == "y":
-                poller = self.resource_client.resources.begin_create_or_update_by_id(
-                    resource_id=resource_path,
-                    api_version=self.api_version,
-                    parameters=update_to_import,
-                )
+        #     if answer.lower() == "y":
+        #         poller = self.resource_client.resources.begin_create_or_update_by_id(
+        #             resource_id=resource_path,
+        #             api_version=self.api_version,
+        #             parameters=update_to_import,
+        #         )
         
-                return poller
+        #         return poller
     
 
     def add_processor_enrich(
@@ -399,14 +493,13 @@ class PipelineProvider(DataProcessorBaseProvider):
         resource_group_name: str,
         dataset_name: str,
         output_path: str,
-        next: str,
+        next_id: str,
         pipeline_enabled: Optional[bool] = True,
         condition: Optional[List[str]] = None,
         always_array: Optional[bool] = None,
         limit: Optional[int] = None,
         pipeline_description: Optional[str] = None,
-        defer: Optional[bool] = False,
-        as_tree: Optional[bool] = False,
+        visualize: Optional[bool] = False,
         cluster_name: Optional[str] = None,
         cluster_resource_group: Optional[str] = None,
         cluster_subscription: Optional[str] = None,
@@ -431,9 +524,7 @@ class PipelineProvider(DataProcessorBaseProvider):
 
         # get instance name from cluster
         # instance_name = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE)
-        instance_name = self.get_dp_instance_name(
-            extended_location=extended_location,
-        )
+        instance_name = self.get_dp_instance_name(extended_location=extended_location)
 
         cache = MicroObjectCache(self.cmd, object)
         cache_resource_name = _get_cache_entry_name(pipeline_name=pipeline_name, instance_name=instance_name)
@@ -454,7 +545,7 @@ class PipelineProvider(DataProcessorBaseProvider):
             "type": "processor/enrich@v1",
             "dataset": dataset_name,
             "outputPath": output_path,
-            "next": next
+            "next": next_id
         }
 
         if not update_to_import:
@@ -498,40 +589,39 @@ class PipelineProvider(DataProcessorBaseProvider):
         if pipeline_description:
             update_to_import["properties"]["description"] = pipeline_description
 
-        ordered, obsoletes=_print_as_tree(update_to_import, as_tree)
+        ordered, obsoletes=_print_as_tree(update_to_import, visualize)
 
-        if defer:
-            # store to az cache
-            cached = cache.set(
-                resource_name=cache_resource_name,
-                resource_group=resource_group_name,
-                resource_type=ResourceTypeMapping.pipeline.value,
-                payload=update_to_import,
-                serialization_model=cache_serialization_model,
-            )
-            if not as_tree:
-                return cached
+        # store to az cache
+        cached = cache.set(
+            resource_name=cache_resource_name,
+            resource_group=resource_group_name,
+            resource_type=ResourceTypeMapping.pipeline.value,
+            payload=update_to_import,
+            serialization_model=cache_serialization_model,
+        )
+        if not visualize:
+            return cached
             
-        else:
-            update_to_import = _reorder_stages(update_to_import, ordered, obsoletes)
-            resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
-            f"{ResourceTypeMapping.instance.value}/{instance_name}/pipelines/{pipeline_name}"
-            # ask user to confirm the update, if yes, update the pipeline
-            if not as_tree:
-                print(json.dumps(update_to_import, indent=4))
+        # else:
+        #     update_to_import = _reorder_stages(update_to_import, ordered, obsoletes)
+        #     resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
+        #     f"{ResourceTypeMapping.instance.value}/{instance_name}/pipelines/{pipeline_name}"
+        #     # ask user to confirm the update, if yes, update the pipeline
+        #     if not as_tree:
+        #         print(json.dumps(update_to_import, indent=4))
 
-            # ask user
-            print("If you are satisfied with the changes, type 'y' to confirm the pipeline creation, otherwise type 'n' to cancel. (y/n)")
-            answer = input()
+        #     # ask user
+        #     print("\nIf you are satisfied with the changes, type 'y' to confirm the pipeline creation, otherwise type 'n' to cancel. (y/n)")
+        #     answer = input()
 
-            if answer.lower() == "y":
-                poller = self.resource_client.resources.begin_create_or_update_by_id(
-                    resource_id=resource_path,
-                    api_version=self.api_version,
-                    parameters=update_to_import,
-                )
+        #     if answer.lower() == "y":
+        #         poller = self.resource_client.resources.begin_create_or_update_by_id(
+        #             resource_id=resource_path,
+        #             api_version=self.api_version,
+        #             parameters=update_to_import,
+        #         )
         
-                return poller
+        #         return poller
 
 
 def _process_format(
@@ -717,7 +807,7 @@ def _print_as_tree(
             if stages[stage].get("type").startswith("processor"):
                 print("|")
                 print("|")
-                print(f"+-------  processor stage({stages[stage].get('type')}): {stages[stage].get('displayName')}")
+                print(f"+-------  processor stage({stages[stage].get('type')}): {stages[stage].get('displayName')}[{stage}]")
         print("|")
         print("|")
 
@@ -727,15 +817,15 @@ def _print_as_tree(
 
     if as_tree:
         if output_stage and output_stage[0].get("type").startswith("output"):
-            print(f"+-------  output stage({output_stage[0].get('type')}): {output_stage[0].get('displayName')}")
+            print(f"+-------  output stage({output_stage[0].get('type')}): {output_stage[0].get('displayName')}[output]")
         else:
             # print in red text: missing output stage
             print("+-------  output stage: \033[91mMISSING\033[0m")
         
         if obesoletes:
-            print("\n\n\033[93mObsolete stages:\033[0m")
+            print("\n\n\033[93mOrphaned stages:\033[0m")
             for obesolete in obesoletes:
-                print(f"{stages[obesolete].get('type')} stage: {stages[obesolete].get('displayName')}")
+                print(f"{stages[obesolete].get('type')} stage: {stages[obesolete].get('displayName')}[{obesolete}]")
     
     # update sorted list to include input stage and output stage if there is any
     if input:
@@ -755,24 +845,11 @@ def _sort_by_next(
 
     obesoletes = []
     sorted:list = list(stages.copy())
-    # while stages:
-    #     stage = stages.popitem()
-    #     next = stage[1].get("next")
-    #     # if next can be find equals stages's displayName, add to sorted
-    #     if next in stages:
-    #         sorted.append(stage)
-    #         sorted.append(stages.pop(next))
-    #     else:
-    #         if next in sorted:
-    #             sorted = sorted[:sorted.index(next)] + [stage] + sorted[sorted.index(next):]
-    #         else:
-    #             obesoletes.append(stage)
-    # index and stage
     for index, stage in enumerate(stages):
-        next_name = stages[stage].get("next")
+        next_id = stages[stage].get("next")
         # find id from displayName
-        next_id = [key for key, value in stages.items() if value.get("displayName") == next_name]
-        next_id = next_id[0] if next_id else ""
+        # next_id = [key for key, value in stages.items() if value.get("displayName") == next_name]
+        # next_id = next_id[0] if next_id else ""
         # if key of stage equals next_id, add to sorted
         if next_id in stages:
             if not stages[next_id].get("type").startswith("output"):
@@ -1191,45 +1268,6 @@ def _process_processor_stages(
     transform_processor_stage: Optional[List[str]] = None,
 ):
     stages = {}
-    # required_args = {
-    #     "processor/aggregate@v1": [
-    #         "windowType",
-    #         "windowSize",
-    #         "function",
-    #         "inputPath",
-    #         "outputPath",
-    #         "next"
-    #     ],
-    #     "processor/enrich@v1": [
-    #         "dataset",
-    #         "outputPath",
-    #         "next"
-    #     ],
-    #     "processor/filter@v1": [
-    #         "expression",
-    #         "next"
-    #     ],
-    #     "processor/grpc@v1": [
-    #         "serverAddress",
-    #         "rpcName",
-    #         "descriptor",
-    #         "next"
-    #     ],
-    #     "processor/http@v1": [
-    #         "url",
-    #         "method",
-    #         "next"
-    #     ],
-    #     "processor/lkv@v1": [
-    #         "inputPath",
-    #         "outputPath",
-    #         "next"
-    #     ],
-    #     "processor/transform@v1": [
-    #         "expression",
-    #         "next"
-    #     ],
-    # }
     
     # for any processor stage that exists, process it
     # flatthen the stages to a list since aggregate_processor_stage etc. can have more than one stage

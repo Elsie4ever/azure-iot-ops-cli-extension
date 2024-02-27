@@ -1117,10 +1117,61 @@ def load_iotops_arguments(self, _):
     
     with self.argument_context("iot ops dp pipeline") as context:
         context.argument(
-            "defer",
-            options_list=["--defer"],
+            "pipeline_name",
+            options_list=["--name", "-n"],
+            help="Pipeline name.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="Instance name.",
+        )
+        context.argument(
+            "resource_group_name",
+            options_list=["--resource-group", "--rg"],
+            help="Resource group name.",
+        )
+        context.argument(
+            "description",
+            options_list=["--description", "-d"],
+            help="Pipeline description.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "disabled",
+            options_list=["--disabled"],
             help="Flag indicating whether the pipeline should be running or not.",
             arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "cluster_name",
+            options_list=["--cluster", "-c"],
+            help="Cluster to associate the dataset with.",
+        )
+        context.argument(
+            "cluster_resource_group",
+            options_list=["--cluster-resource-group", "--crg"],
+            help="Resource group for cluster.",
+        )
+        context.argument(
+            "cluster_subscription",
+            options_list=["--cluster-subscription", "--cs"],
+            help="Subscription Id for cluster.",
+        )
+        context.argument(
+            "custom_location_name",
+            options_list=["--custom-location", "--cl"],
+            help="Custom location used to associate dataset with cluster.",
+        )
+        context.argument(
+            "custom_location_resource_group",
+            options_list=["--custom-location-resource-group", "--clrg"],
+            help="Resource group for custom location.",
+        )
+        context.argument(
+            "custom_location_subscription",
+            options_list=["--custom-location-subscription", "--cls"],
+            help="Subscription Id for custom location.",
         )
     
     with self.argument_context("iot ops dp pipeline source add mqtt") as context:
@@ -1332,6 +1383,11 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops dp pipeline processor add enrich") as context:
+        context.argument(
+            "next_id",
+            options_list=["--next-stage-id, --next"],
+            help="Next stage Id.",
+        )
         context.argument(
             "dataset",
             options_list=["--dataset", "-d"],

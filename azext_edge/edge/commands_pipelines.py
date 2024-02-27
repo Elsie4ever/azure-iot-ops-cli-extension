@@ -70,6 +70,56 @@ def create_pipeline(
     )
 
 
+def submit_pipeline(
+    cmd,
+    pipeline_name: str,
+    resource_group_name: str,
+    instance_name: Optional[str]=None,
+    disabled: Optional[bool]=False,
+    desc: Optional[str]=None,
+    cluster_name: Optional[str] = None,
+    cluster_resource_group: Optional[str] = None,
+    cluster_subscription: Optional[str] = None,
+    custom_location_name: Optional[str] = None,
+    custom_location_resource_group: Optional[str] = None,
+    custom_location_subscription: Optional[str] = None,
+    location: Optional[str] = None,
+    tags: Optional[Dict[str, str]] = None,
+):
+    pipeline_provider = PipelineProvider(cmd)
+    return pipeline_provider.submit(
+        pipeline_name=pipeline_name,
+        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        disabled=disabled,
+        desc=desc,
+        cluster_name=cluster_name,
+        cluster_resource_group=cluster_resource_group,
+        cluster_subscription=cluster_subscription,
+        custom_location_name=custom_location_name,
+        custom_location_resource_group=custom_location_resource_group,
+        custom_location_subscription=custom_location_subscription,
+        location=location,
+        tags=tags,
+    )
+
+
+def visualize_pipeline(
+    cmd,
+    pipeline_name: str,
+    resource_group_name: str,
+    instance_name: Optional[str]=None,
+    cluster_name: Optional[str] = None,
+):
+    pipeline_provider = PipelineProvider(cmd)
+    return pipeline_provider.visualize(
+        pipeline_name=pipeline_name,
+        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        cluster_name=cluster_name,
+    )
+
+
 def add_pipeline_source_mqtt(
     cmd,
     pipeline_name: str,
@@ -82,7 +132,6 @@ def add_pipeline_source_mqtt(
     partition_strategy: List[str],
     name: Optional[str] = None,
     pipeline_description: Optional[str] = None,
-    defer: Optional[bool] = None,
     clean_session: Optional[bool] = None,
     authentication: Optional[List[str]] = None,
     cluster_name: Optional[str] = None,
@@ -92,7 +141,7 @@ def add_pipeline_source_mqtt(
     custom_location_resource_group: Optional[str] = None,
     custom_location_subscription: Optional[str] = None,
     location: Optional[str] = None,
-    as_tree: Optional[bool] = False,
+    visualize: Optional[bool] = False,
     tags: Optional[Dict[str, str]] = None,
 ):
     # get instance name from cluster
@@ -109,7 +158,6 @@ def add_pipeline_source_mqtt(
         partition_strategy=partition_strategy,
         clean_session=clean_session,
         authentication=authentication,
-        defer=defer,
         name=name,
         cluster_name=cluster_name,
         cluster_resource_group=cluster_resource_group,
@@ -118,7 +166,7 @@ def add_pipeline_source_mqtt(
         custom_location_resource_group=custom_location_resource_group,
         custom_location_subscription=custom_location_subscription,
         location=location,
-        as_tree=as_tree,
+        visualize=visualize,
         tags=tags,
     )
 
@@ -136,8 +184,7 @@ def add_pipeline_destination_mqtt(
     user_property: Optional[List[str]] = None,
     retry: Optional[List[str]] = None,
     pipeline_description: Optional[str] = None,
-    defer: Optional[bool] = False,
-    as_tree: Optional[bool] = False,
+    visualize: Optional[bool] = False,
     authentication: Optional[List[str]] = None,
     cluster_name: Optional[str] = None,
     cluster_resource_group: Optional[str] = None,
@@ -161,8 +208,7 @@ def add_pipeline_destination_mqtt(
         qos=qos,
         user_property=user_property,
         retry=retry,
-        defer=defer,
-        as_tree=as_tree,
+        visualize=visualize,
         authentication=authentication,
         name=name,
         cluster_name=cluster_name,
@@ -180,7 +226,7 @@ def add_pipeline_processor_enrich(
     cmd,
     name: str,
     pipeline_name: str,
-    next: str,
+    next_id: str,
     resource_group_name: str,
     dataset_name: str,
     output_path: str,
@@ -188,8 +234,7 @@ def add_pipeline_processor_enrich(
     always_array: Optional[bool] = None,
     limit: Optional[int] = None,
     pipeline_description: Optional[str] = None,
-    defer: Optional[bool] = False,
-    as_tree: Optional[bool] = False,
+    visualize: Optional[bool] = False,
     cluster_name: Optional[str] = None,
     cluster_resource_group: Optional[str] = None,
     cluster_subscription: Optional[str] = None,
@@ -209,10 +254,9 @@ def add_pipeline_processor_enrich(
         output_path=output_path,
         condition=condition,
         always_array=always_array,
-        next=next,
+        next_id=next_id,
         limit=limit,
-        defer=defer,
-        as_tree=as_tree,
+        visualize=visualize,
         name=name,
         cluster_name=cluster_name,
         cluster_resource_group=cluster_resource_group,
