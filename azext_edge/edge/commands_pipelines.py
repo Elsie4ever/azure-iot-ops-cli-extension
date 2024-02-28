@@ -110,6 +110,8 @@ def visualize_pipeline(
     resource_group_name: str,
     instance_name: Optional[str]=None,
     cluster_name: Optional[str] = None,
+    cache: Optional[bool] = False,
+    visualize: Optional[bool] = False,
 ):
     pipeline_provider = PipelineProvider(cmd)
     return pipeline_provider.visualize(
@@ -117,6 +119,8 @@ def visualize_pipeline(
         resource_group_name=resource_group_name,
         instance_name=instance_name,
         cluster_name=cluster_name,
+        cached=cache,
+        visualize=visualize,
     )
 
 

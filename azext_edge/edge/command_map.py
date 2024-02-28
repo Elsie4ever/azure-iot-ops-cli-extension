@@ -110,8 +110,8 @@ def load_iotops_commands(self, _):
         command_type=pipeline_resource_ops,
     ) as cmd_group:
         cmd_group.command("create", "create_pipeline")
-        cmd_group.command("submit", "submit_pipeline")
-        cmd_group.command("visualize", "visualize_pipeline")
+        cmd_group.command("publish", "submit_pipeline")
+        cmd_group.command("show", "visualize_pipeline")
 
     with self.command_group(
         "iot ops dp pipeline source add",

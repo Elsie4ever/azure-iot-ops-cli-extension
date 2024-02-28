@@ -187,6 +187,8 @@ class PipelineProvider(DataProcessorBaseProvider):
         resource_group_name: str,
         instance_name: Optional[str]=None,
         cluster_name: Optional[str] = None,
+        cached: Optional[bool] = False,
+        visualize: Optional[bool] = False,
     )-> Dict[str, any]:
         extended_location = self.check_cluster_and_custom_location(
             custom_location_name=None,
