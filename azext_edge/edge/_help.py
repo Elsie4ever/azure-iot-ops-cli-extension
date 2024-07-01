@@ -16,7 +16,7 @@ from .providers.support_bundle import (
     COMPAT_DATA_PROCESSOR_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_LNM_APIS,
-    COMPAT_MQ_APIS,
+    COMPAT_MQTT_BROKER_APIS,
     COMPAT_OPCUA_APIS,
     COMPAT_ORC_APIS,
 )
@@ -52,7 +52,7 @@ def load_iotops_help():
         short-summary: Creates a standard support bundle zip archive for use in troubleshooting and diagnostics.
         long-summary: |
             {{Supported service APIs}}
-            - {COMPAT_MQ_APIS.as_str()}
+            - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
             - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
             - {COMPAT_ORC_APIS.as_str()}
@@ -94,7 +94,7 @@ def load_iotops_help():
             - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_LNM_APIS.as_str()}
-            - {COMPAT_MQ_APIS.as_str()}
+            - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
 
         examples:

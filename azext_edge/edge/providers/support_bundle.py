@@ -15,7 +15,6 @@ from ..common import OpsServiceType
 from ..providers.edge_api import (
     CLUSTER_CONFIG_API_V1,
     DATA_PROCESSOR_API_V1,
-    MQ_API_V1B1,
     MQTT_BROKER_API_V1B1,
     LNM_API_V1B1,
     OPCUA_API_V1,
@@ -30,7 +29,6 @@ logger = get_logger(__name__)
 console = Console()
 
 COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
-COMPAT_MQ_APIS = EdgeApiManager(resource_apis=[MQ_API_V1B1])
 COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DATA_PROCESSOR_APIS = EdgeApiManager(resource_apis=[DATA_PROCESSOR_API_V1])
@@ -66,7 +64,7 @@ def build_bundle(
 
     api_map = {
         OpsServiceType.billing.value: {"apis": COMPAT_CLUSTER_CONFIG_APIS, "prepare_bundle": prepare_billing_bundle},
-        OpsServiceType.mq.value: {"apis": COMPAT_MQ_APIS, "prepare_bundle": prepare_mq_bundle},
+        OpsServiceType.mq.value: {"apis": COMPAT_MQTT_BROKER_APIS, "prepare_bundle": prepare_mq_bundle},
         OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
             "prepare_bundle": prepare_opcua_bundle,
@@ -94,14 +92,7 @@ def build_bundle(
 
     for service_moniker, api_info in api_map.items():
         if ops_service in [OpsServiceType.auto.value, service_moniker]:
-            try:
-                deployed_apis = api_info["apis"].get_deployed(raise_on_404)
-            except Exception as e:
-                if service_moniker == OpsServiceType.mq.value:
-                    # Fallback to check MQTT_BROKER_API_V1B1 if MQ_API_V1B1 is not found
-                    deployed_apis = COMPAT_MQTT_BROKER_APIS.get_deployed(raise_on_404)
-                else:
-                    raise e
+            deployed_apis = api_info["apis"].get_deployed(raise_on_404)
             if deployed_apis:
                 bundle_method = api_info["prepare_bundle"]
                 # Check if the function takes a second argument
