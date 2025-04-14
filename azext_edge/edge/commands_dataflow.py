@@ -38,6 +38,21 @@ def list_dataflows(cmd, profile_name: str, instance_name: str, resource_group_na
     )
 
 
+def publish_dataflow(
+    cmd,
+    dataflow_name: str,
+    profile_name: str,
+    instance_name: str,
+    resource_group_name: str,
+) -> dict:
+    return DataFlowProfiles(cmd).dataflows.publish(
+        name=dataflow_name,
+        dataflow_profile_name=profile_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+
+
 def create_dataflow_endpoint_adx(
     cmd,
     endpoint_name: str,
@@ -109,7 +124,7 @@ def create_dataflow_endpoint_adls(
         **kwargs
     )
 
-def create_dataflow_endpoint_fabric(
+def create_dataflow_endpoint_fabric_onelake(
     cmd,
     endpoint_name: str,
     instance_name: str,
@@ -230,7 +245,7 @@ def create_dataflow_endpoint_localstorage(
     )
 
 
-def create_dataflow_endpoint_mqtt(
+def create_dataflow_endpoint_custom_mqtt(
     cmd,
     endpoint_name: str,
     instance_name: str,

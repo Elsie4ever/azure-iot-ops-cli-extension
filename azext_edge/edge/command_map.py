@@ -108,6 +108,7 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_dataflow")
         cmd_group.command("list", "list_dataflows")
+        cmd_group.command("publish", "publish_dataflow")
 
     with self.command_group(
         "iot ops dataflow profile",
@@ -129,10 +130,15 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.command("adx", "create_dataflow_endpoint_adx")
         cmd_group.command("adls", "create_dataflow_endpoint_adls")
-        cmd_group.command("fabric", "create_dataflow_endpoint_fabric")
+        cmd_group.command("fabric-onelake", "create_dataflow_endpoint_fabric_onelake")
+        cmd_group.command("eventhub", "create_dataflow_endpoint_eventhub")
+        cmd_group.command("fabric-realtime", "create_dataflow_endpoint_fabric_realtime")
         cmd_group.command("kafka", "create_dataflow_endpoint_kafka")
         cmd_group.command("localstorage", "create_dataflow_endpoint_localstorage")
-        cmd_group.command("mqtt", "create_dataflow_endpoint_mqtt")
+        cmd_group.command("local-mqtt", "create_dataflow_endpoint_local_mqtt")
+        cmd_group.command("eventgrid", "create_dataflow_endpoint_eventgrid")
+        cmd_group.command("custom-mqtt", "create_dataflow_endpoint_custom_mqtt")
+
 
     with self.command_group(
         "iot ops asset",

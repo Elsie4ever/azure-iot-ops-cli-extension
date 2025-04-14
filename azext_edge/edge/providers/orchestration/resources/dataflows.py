@@ -10,6 +10,7 @@ from knack.log import get_logger
 
 from azext_edge.edge.providers.orchestration.common import AUTHENTICATION_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP, DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_TYPE_SETTINGS, DataflowEndpointType, DataflowEndpointAuthenticationType
 from azext_edge.edge.providers.orchestration.resources.instances import Instances
+from azext_edge.edge.providers.orchestration.resources.reskit import GetInstanceExtLoc
 
 from ....util.az_client import get_iotops_mgmt_client
 from ....util.queryable import Queryable
@@ -32,7 +33,8 @@ class DataFlowProfiles(Queryable):
             subscription_id=self.default_subscription_id,
         )
         self.ops: "DataflowProfileOperations" = self.iotops_mgmt_client.dataflow_profile
-        self.dataflows = DataFlows(self.iotops_mgmt_client.dataflow)
+        self.instances = Instances(cmd=cmd)
+        self.dataflows = DataFlows(self.iotops_mgmt_client.dataflow, self.instances.get_ext_loc)
 
     def show(self, name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(
@@ -44,8 +46,9 @@ class DataFlowProfiles(Queryable):
 
 
 class DataFlows:
-    def __init__(self, ops: "DataflowOperations"):
+    def __init__(self, ops: "DataflowOperations", get_ext_loc: GetInstanceExtLoc):
         self.ops = ops
+        self.get_ext_loc = get_ext_loc
 
     def show(self, name: str, dataflow_profile_name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(
@@ -60,6 +63,71 @@ class DataFlows:
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             dataflow_profile_name=dataflow_profile_name,
+        )
+    
+    def publish(
+        self,
+        name: str,
+        dataflow_profile_name: str,
+        instance_name: str,
+        resource_group_name: str,
+    ) -> dict:
+        extended_location = self.get_ext_loc(
+            name=instance_name, resource_group_name=resource_group_name
+        )
+        
+        resource = {
+            "extendedLocation": extended_location,
+            "properties": {
+                "mode": "Enabled",
+                "operations": [
+                    {
+                        "operationType": "Source",
+                        "sourceSettings": {
+                        "endpointRef": "test1",
+                        "assetRef": "",
+                        "serializationFormat": "Json",
+                        "schemaRef": "",
+                        "dataSources": [
+                            "test"
+                        ]
+                        }
+                    },
+                    {
+                        "operationType": "BuiltInTransformation",
+                        "builtInTransformationSettings": {
+                        "serializationFormat": "Json",
+                        "schemaRef": "",
+                        "datasets": [],
+                        "filter": [],
+                        "map": [
+                            {
+                            "type": "PassThrough",
+                            "inputs": [
+                                "*"
+                            ],
+                            "output": "*"
+                            },
+                        ]
+                        }
+                    },
+                    {
+                        "operationType": "Destination",
+                        "destinationSettings": {
+                        "endpointRef": "test1",
+                        "dataDestination": "ddd"
+                        }
+                    }
+                ],
+            },
+        }
+
+        return self.ops.begin_create_or_update(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_profile_name=dataflow_profile_name,
+            dataflow_name=name,
+            resource=resource,
         )
 
 
