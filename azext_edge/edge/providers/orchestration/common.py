@@ -146,6 +146,12 @@ class TlsKeyRotation(Enum):
     NEVER = "Never"
 
 
+class DataflowOperationType(Enum):
+    SOURCE = "Source"
+    TRANSFORMATION = "Transformation"
+    DESTINATION = "Destination"
+
+
 class DataflowEndpointType(Enum):
     DATAEXPLORER = "DataExplorer"
     DATALAKESTORAGE = "DataLakeStorage"
